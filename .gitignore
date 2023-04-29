@@ -1,0 +1,6 @@
+.pio
+.vs
+.vscode
+Debug
+Release
+*.swp
