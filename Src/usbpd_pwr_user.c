@@ -27,6 +27,8 @@
 #endif /* _TRACE */
 
 /* USER CODE BEGIN include */
+#include "main.h"
+
 /* USER CODE END include */
 
 /** @addtogroup BSP
@@ -75,7 +77,7 @@
   * @{
   */
 /* USER CODE BEGIN POWER_Private_Variables */
-
+extern ADC_HandleTypeDef hadc1;
 /* USER CODE END POWER_Private_Variables */
 /**
   * @}
@@ -116,6 +118,13 @@ __weak int32_t BSP_USBPD_PWR_Init(uint32_t Instance)
   /* USER CODE BEGIN BSP_USBPD_PWR_Init */
   /* Check if instance is valid       */
   int32_t ret = BSP_ERROR_NONE;
+
+  /* Disable DB management on TCPP01 */
+  LL_GPIO_SetPinMode(UCPD_DBN_GPIO_Port, UCPD_DBN_Pin, LL_GPIO_MODE_OUTPUT);
+  LL_GPIO_SetPinSpeed(UCPD_DBN_GPIO_Port, UCPD_DBN_Pin, LL_GPIO_SPEED_FREQ_HIGH);
+  LL_GPIO_SetPinOutputType(UCPD_DBN_GPIO_Port, UCPD_DBN_Pin, LL_GPIO_OUTPUT_PUSHPULL);
+  LL_GPIO_SetPinPull(UCPD_DBN_GPIO_Port, UCPD_DBN_Pin, LL_GPIO_PULL_UP);
+  LL_GPIO_SetOutputPin(UCPD_DBN_GPIO_Port, UCPD_DBN_Pin);
 
   if (Instance >= USBPD_PWR_INSTANCES_NBR)
   {
@@ -264,7 +273,8 @@ __weak int32_t BSP_USBPD_PWR_VBUSInit(uint32_t Instance)
   }
   else
   {
-    PWR_DEBUG_TRACE(Instance, "ADVICE: Update BSP_USBPD_PWR_VBUSInit");
+    // PWR_DEBUG_TRACE(Instance, "ADVICE: Update BSP_USBPD_PWR_VBUSInit");
+    LL_ADC_REG_StartConversion(hadc1.Instance);
   }
 
   return ret;
@@ -469,21 +479,21 @@ __weak int32_t BSP_USBPD_PWR_VBUSGetVoltage(uint32_t Instance, uint32_t *pVoltag
 {
   /* USER CODE BEGIN BSP_USBPD_PWR_VBUSGetVoltage */
 
-  /* Check if instance is valid       */
-  int32_t ret;
-  uint32_t val = 0U;
-
   if ((Instance >= USBPD_PWR_INSTANCES_NBR) || (NULL == pVoltage))
   {
-    ret = BSP_ERROR_WRONG_PARAM;
+    return BSP_ERROR_WRONG_PARAM;
   }
-  else
-  {
-    ret = BSP_ERROR_FEATURE_NOT_SUPPORTED;
-    PWR_DEBUG_TRACE(Instance, "ADVICE: Update BSP_USBPD_PWR_VBUSGetVoltage");
-  }
+
+  uint32_t val;
+
+  val = __LL_ADC_CALC_DATA_TO_VOLTAGE(3300,  LL_ADC_REG_ReadConversionData12(hadc1.Instance), LL_ADC_RESOLUTION_12B); /* mV */
+  /* STM32L5XX_NUCLEO_144 board is used */
+  /* Value is multiplied by 7.613 (Divider R35/R36 (49.9K/330K) for VSENSE) */
+  val *= 7613;
+  val /= 1000;
   *pVoltage = val;
-  return ret;
+
+  return BSP_ERROR_NONE;
   /* USER CODE END BSP_USBPD_PWR_VBUSGetVoltage */
 }
 

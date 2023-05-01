@@ -23,6 +23,7 @@
 #include "usbpd.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "usbpd_hw_if.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -52,7 +53,31 @@
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
-
+#if 0
+#define HALT_IF_DEBUGGING()                                         \
+  do                                                                \
+  {                                                                 \
+    if ((*(volatile uint32_t *)0xE000EDF0) & (1 << 0))              \
+    {                                                               \
+      /* Hijack the process stack pointer to make backtrace work */ \
+      uint32_t exceptionDetail;                                     \
+      __asm volatile(                                               \
+          "tst lr, #4 \n"                                           \
+          "ite eq \n"                                               \
+          "mrseq %0, msp \n"                                        \
+          "mrsne %0, psp \n"                                        \
+          "mov sp, %0 \n"                                           \
+          "mov %0, lr \n"                                           \
+          "ldr lr, [sp, #20] \n"                                    \
+          "bkpt 1 \n"                                               \
+          : "=r"(exceptionDetail)                                   \
+          :                                                         \
+          :);                                                       \
+    }                                                               \
+  } while (0)
+#else
+#define HALT_IF_DEBUGGING() do { } while(0)
+#endif
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
@@ -76,9 +101,7 @@ void NMI_Handler(void)
 
   /* USER CODE END NonMaskableInt_IRQn 0 */
   /* USER CODE BEGIN NonMaskableInt_IRQn 1 */
-  while (1)
-  {
-  }
+
   /* USER CODE END NonMaskableInt_IRQn 1 */
 }
 
@@ -88,7 +111,7 @@ void NMI_Handler(void)
 void HardFault_Handler(void)
 {
   /* USER CODE BEGIN HardFault_IRQn 0 */
-
+  HALT_IF_DEBUGGING();
   /* USER CODE END HardFault_IRQn 0 */
   while (1)
   {
@@ -103,7 +126,7 @@ void HardFault_Handler(void)
 void MemManage_Handler(void)
 {
   /* USER CODE BEGIN MemoryManagement_IRQn 0 */
-
+  HALT_IF_DEBUGGING();
   /* USER CODE END MemoryManagement_IRQn 0 */
   while (1)
   {
@@ -118,7 +141,7 @@ void MemManage_Handler(void)
 void BusFault_Handler(void)
 {
   /* USER CODE BEGIN BusFault_IRQn 0 */
-
+  HALT_IF_DEBUGGING();
   /* USER CODE END BusFault_IRQn 0 */
   while (1)
   {
@@ -133,7 +156,7 @@ void BusFault_Handler(void)
 void UsageFault_Handler(void)
 {
   /* USER CODE BEGIN UsageFault_IRQn 0 */
-
+  HALT_IF_DEBUGGING();
   /* USER CODE END UsageFault_IRQn 0 */
   while (1)
   {
