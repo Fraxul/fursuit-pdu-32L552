@@ -274,7 +274,7 @@ __weak int32_t BSP_USBPD_PWR_VBUSInit(uint32_t Instance)
   else
   {
     // PWR_DEBUG_TRACE(Instance, "ADVICE: Update BSP_USBPD_PWR_VBUSInit");
-    LL_ADC_REG_StartConversion(hadc1.Instance);
+    //LL_ADC_REG_StartConversion(hadc1.Instance);
   }
 
   return ret;
@@ -486,11 +486,22 @@ __weak int32_t BSP_USBPD_PWR_VBUSGetVoltage(uint32_t Instance, uint32_t *pVoltag
 
   uint32_t val;
 
+  HAL_ADC_Start(&hadc1);
+  HAL_ADC_PollForConversion(&hadc1, 1000);
+
   val = __LL_ADC_CALC_DATA_TO_VOLTAGE(3300,  LL_ADC_REG_ReadConversionData12(hadc1.Instance), LL_ADC_RESOLUTION_12B); /* mV */
+  HAL_ADC_Stop(&hadc1);
   /* STM32L5XX_NUCLEO_144 board is used */
+  #if 0
   /* Value is multiplied by 7.613 (Divider R35/R36 (49.9K/330K) for VSENSE) */
   val *= 7613;
   val /= 1000;
+  #else
+  // X-NUCLEO-SNK1M1 divider is 200K / 40.2K, so multiply by 5.975 ((200 + 40.2) / 40.2). (12237 / 2048 lets us use a shift instead of integer division.)
+  val *= 12237;
+  val /= 2048;
+
+  #endif
   *pVoltage = val;
 
   return BSP_ERROR_NONE;

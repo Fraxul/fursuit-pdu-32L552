@@ -83,6 +83,8 @@ void Error_Handler(void);
 #define LED_GREEN_GPIO_Port GPIOC
 #define LED_RED_Pin GPIO_PIN_9
 #define LED_RED_GPIO_Port GPIOA
+#define X_SNK1M1_PWR_Pin GPIO_PIN_10
+#define X_SNK1M1_PWR_GPIO_Port GPIOC
 #define UCPD_DBN_Pin GPIO_PIN_5
 #define UCPD_DBN_GPIO_Port GPIOB
 #define LED_BLUE_Pin GPIO_PIN_7
