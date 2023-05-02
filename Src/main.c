@@ -21,6 +21,7 @@
 #include "cmsis_os.h"
 #include "adc.h"
 #include "dma.h"
+#include "i2c.h"
 #include "icache.h"
 #include "usart.h"
 #include "rtc.h"
@@ -101,8 +102,11 @@ int main(void)
   MX_LPUART1_UART_Init();
   MX_RTC_Init();
   MX_UCPD1_Init();
+  MX_I2C2_SMBUS_Init();
   MX_USB_Device_Init();
   /* USER CODE BEGIN 2 */
+
+  MX_STACK_SMBUS_Init();
 
   /* USER CODE END 2 */
 

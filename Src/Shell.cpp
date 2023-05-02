@@ -60,8 +60,7 @@ static void ps_exec_callback(struct ush_object* self, struct ush_file_descriptor
   UBaseType_t taskCount = uxTaskGetNumberOfTasks();
   TaskStatus_t* pxTaskStatusArray = (TaskStatus_t*) pvPortMalloc(taskCount * sizeof(TaskStatus_t));
   if (pxTaskStatusArray == nullptr) {
-    snprintf((char*)scratch, ushFileScratchLen, "malloc() failure allocating TaskStatus_t array (%lu bytes for %lu tasks)", taskCount * sizeof(TaskStatus_t), taskCount);
-    ush_print(self, (char*)scratch);
+    printf("malloc() failure allocating TaskStatus_t array (%lu bytes for %lu tasks)\n", taskCount * sizeof(TaskStatus_t), taskCount);
     return;
   }
 
