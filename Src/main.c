@@ -25,8 +25,8 @@
 #include "usart.h"
 #include "rtc.h"
 #include "ucpd.h"
-#include "usb.h"
 #include "usbpd.h"
+#include "usb_device.h"
 #include "gpio.h"
 
 /* Private includes ----------------------------------------------------------*/
@@ -100,8 +100,8 @@ int main(void)
   MX_ADC1_Init();
   MX_LPUART1_UART_Init();
   MX_RTC_Init();
-  MX_USB_PCD_Init();
   MX_UCPD1_Init();
+  MX_USB_Device_Init();
   /* USER CODE BEGIN 2 */
 
   /* USER CODE END 2 */

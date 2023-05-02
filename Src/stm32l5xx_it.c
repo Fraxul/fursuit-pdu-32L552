@@ -81,6 +81,7 @@
 /* USER CODE END 0 */
 
 /* External variables --------------------------------------------------------*/
+extern PCD_HandleTypeDef hpcd_USB_FS;
 extern DMA_HandleTypeDef hdma_lpuart1_tx;
 extern UART_HandleTypeDef hlpuart1;
 extern TIM_HandleTypeDef htim6;
@@ -253,6 +254,20 @@ void LPUART1_IRQHandler(void)
   /* USER CODE BEGIN LPUART1_IRQn 1 */
 
   /* USER CODE END LPUART1_IRQn 1 */
+}
+
+/**
+  * @brief This function handles USB FS global interrupt / USB FS wake-up interrupt through EXTI line 34.
+  */
+void USB_FS_IRQHandler(void)
+{
+  /* USER CODE BEGIN USB_FS_IRQn 0 */
+
+  /* USER CODE END USB_FS_IRQn 0 */
+  HAL_PCD_IRQHandler(&hpcd_USB_FS);
+  /* USER CODE BEGIN USB_FS_IRQn 1 */
+
+  /* USER CODE END USB_FS_IRQn 1 */
 }
 
 /**
