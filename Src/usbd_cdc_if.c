@@ -22,6 +22,9 @@
 #include "usbd_cdc_if.h"
 
 /* USER CODE BEGIN INCLUDE */
+#include <FreeRTOS.h>
+#include <task.h>
+#include <stream_buffer.h>
 
 /* USER CODE END INCLUDE */
 
@@ -95,6 +98,12 @@ uint8_t UserTxBufferFS[APP_TX_DATA_SIZE];
 
 /* USER CODE BEGIN PRIVATE_VARIABLES */
 
+uint8_t lineCoding[7]; // Line coding buffer
+
+extern StreamBufferHandle_t usbRxStream;
+extern StreamBufferHandle_t usbTxStream;
+extern TaskHandle_t USB_TxHandle;
+
 /* USER CODE END PRIVATE_VARIABLES */
 
 /**
@@ -155,6 +164,23 @@ static int8_t CDC_Init_FS(void)
   /* Set Application Buffers */
   USBD_CDC_SetTxBuffer(&hUsbDeviceFS, UserTxBufferFS, 0);
   USBD_CDC_SetRxBuffer(&hUsbDeviceFS, UserRxBufferFS);
+
+  // Init default line-coding -- pretend to be 115200 8N1.
+  // Prevents confusion by some host devices (see https://stackoverflow.com/a/26925578 )
+  const uint32_t baudrate = 115200;
+  lineCoding[0] = (uint8_t) baudrate;
+  lineCoding[1] = (uint8_t) baudrate >> 8;
+  lineCoding[2] = (uint8_t) baudrate >> 16;
+  lineCoding[3] = (uint8_t) baudrate >> 24;
+  lineCoding[4] = 0; // 1 stop bit
+  lineCoding[5] = 0; // no parity
+  lineCoding[6] = 8; // 8 data bits
+
+  // Notify the USB-TX task to wake up and start trying to transmit
+  BaseType_t xHigherPriorityTaskWoken = 0;
+  xTaskNotifyFromISR(USB_TxHandle, 1, eSetValueWithOverwrite, &xHigherPriorityTaskWoken);
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+
   return (USBD_OK);
   /* USER CODE END 3 */
 }
@@ -220,12 +246,15 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
   /* 6      | bDataBits  |   1   | Number Data bits (5, 6, 7, 8 or 16).          */
   /*******************************************************************************/
     case CDC_SET_LINE_CODING:
-
-    break;
+      memcpy(lineCoding, pbuf, 7);
+      break;
 
     case CDC_GET_LINE_CODING:
+      // Get line coding is invoked when the host connects.
+      // TODO: raise an external notification?
+      memcpy(pbuf, lineCoding, 7);
 
-    break;
+      break;
 
     case CDC_SET_CONTROL_LINE_STATE:
 
@@ -261,8 +290,29 @@ static int8_t CDC_Control_FS(uint8_t cmd, uint8_t* pbuf, uint16_t length)
 static int8_t CDC_Receive_FS(uint8_t* Buf, uint32_t *Len)
 {
   /* USER CODE BEGIN 6 */
-  USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]);
+
+
+  // Buf is the pointer to the static Rx buffer that we can receive into.
+  // Len is pointer to the received data length
+  // USBD_CDC_SetRxBuffer(&hUsbDeviceFS, &Buf[0]); // originally part of the generated code, but this is not necessary.
+  // It would just set the pointer that we received in Buf anyway
+
+  uint16_t len = (uint16_t) *Len;
+
+
+  if (xStreamBufferSpacesAvailable(usbRxStream) < len) {
+    return USBD_FAIL; // Not enough space in the stream to write this packet
+  }
+
+
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  xStreamBufferSendFromISR(usbRxStream, Buf, len, &xHigherPriorityTaskWoken);
+
+  // Mark packet as received
   USBD_CDC_ReceivePacket(&hUsbDeviceFS);
+
+  // Switch to a higher-priority task on ISR exit, if necessary
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
   return (USBD_OK);
   /* USER CODE END 6 */
 }
@@ -316,6 +366,38 @@ static int8_t CDC_TransmitCplt_FS(uint8_t *Buf, uint32_t *Len, uint8_t epnum)
 }
 
 /* USER CODE BEGIN PRIVATE_FUNCTIONS_IMPLEMENTATION */
+
+__attribute__((noreturn)) void Task_USB_Tx() {
+  while (1) {
+
+    // Wait for USB-CDC to be connected.
+    while (hUsbDeviceFS.pClassData == NULL) {
+      BaseType_t notificationValue = 0;
+      xTaskNotifyWait(0, 0, &notificationValue, portMAX_DELAY);
+    }
+
+    size_t len = xStreamBufferReceive(usbTxStream, UserTxBufferFS, APP_TX_DATA_SIZE, portMAX_DELAY);
+    if (!len)
+      continue;
+
+    if (hUsbDeviceFS.pClassData == NULL)
+      continue; // USB is not connected. Throw away anything in the stream buffer.
+
+    // TODO: This should really be interrupt or callback-driven
+    while (1) {
+      uint8_t res = CDC_Transmit_FS(UserTxBufferFS, len);
+      if (res != USBD_BUSY)
+        break;
+      if (len < APP_TX_DATA_SIZE) {
+        len += xStreamBufferReceive(usbTxStream, UserTxBufferFS + len, APP_TX_DATA_SIZE - len, pdMS_TO_TICKS(3));
+      } else {
+        vTaskDelay(pdMS_TO_TICKS(3));
+      }
+    }
+
+  }
+
+}
 
 /* USER CODE END PRIVATE_FUNCTIONS_IMPLEMENTATION */
 

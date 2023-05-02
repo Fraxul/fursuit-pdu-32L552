@@ -25,7 +25,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "stream_buffer.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -45,6 +45,29 @@
 
 /* Private variables ---------------------------------------------------------*/
 /* USER CODE BEGIN Variables */
+
+StreamBufferHandle_t usbRxStream;
+#define usbRxStreamSize 127
+static StaticStreamBuffer_t staticUsbRxStream;
+static uint8_t staticUsbRxStreamStorage[usbRxStreamSize + 1];
+
+StreamBufferHandle_t usbTxStream;
+#define usbTxStreamSize 127
+static StaticStreamBuffer_t staticUsbTxStream;
+static uint8_t staticUsbTxStreamStorage[usbTxStreamSize + 1];
+
+#define DECLARE_TASK(TaskName, StackSizeInWords) \
+  osThreadId TaskName##Handle;                   \
+  uint32_t TaskName##Stack[StackSizeInWords];    \
+  StaticTask_t TaskName##ControlBlock;    \
+  extern void Task_##TaskName(void *arg);  \
+  static const uint32_t TaskName##_StackSize = StackSizeInWords;
+
+#define START_TASK(TaskName, Priority) \
+  TaskName##Handle = xTaskCreateStatic(Task_##TaskName, #TaskName, TaskName##_StackSize, /*arg=*/ 0, Priority, TaskName##Stack, &TaskName##ControlBlock);
+
+DECLARE_TASK(USB_Tx, 128);
+DECLARE_TASK(Shell, 256);
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -98,23 +121,24 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
   */
 void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN Init */
-
+  usbRxStream = xStreamBufferCreateStatic(usbRxStreamSize, /*triggerLevel=*/1, staticUsbRxStreamStorage, &staticUsbRxStream);
+  usbTxStream = xStreamBufferCreateStatic(usbTxStreamSize, /*triggerLevel=*/1, staticUsbTxStreamStorage, &staticUsbTxStream);
   /* USER CODE END Init */
 
   /* USER CODE BEGIN RTOS_MUTEX */
-  /* add mutexes, ... */
+/* add mutexes, ... */
   /* USER CODE END RTOS_MUTEX */
 
   /* USER CODE BEGIN RTOS_SEMAPHORES */
-  /* add semaphores, ... */
+/* add semaphores, ... */
   /* USER CODE END RTOS_SEMAPHORES */
 
   /* USER CODE BEGIN RTOS_TIMERS */
-  /* start timers, add new ones, ... */
+/* start timers, add new ones, ... */
   /* USER CODE END RTOS_TIMERS */
 
   /* USER CODE BEGIN RTOS_QUEUES */
-  /* add queues, ... */
+/* add queues, ... */
   /* USER CODE END RTOS_QUEUES */
 
   /* Create the thread(s) */
@@ -122,11 +146,14 @@ void MX_FREERTOS_Init(void) {
   defaultTaskHandle = osThreadNew(StartDefaultTask, NULL, &defaultTask_attributes);
 
   /* USER CODE BEGIN RTOS_THREADS */
-  /* add threads, ... */
+
+  START_TASK(Shell, osPriorityNormal);
+  START_TASK(USB_Tx, osPriorityHigh);
+
   /* USER CODE END RTOS_THREADS */
 
   /* USER CODE BEGIN RTOS_EVENTS */
-  /* add events, ... */
+/* add events, ... */
   /* USER CODE END RTOS_EVENTS */
 
 }
