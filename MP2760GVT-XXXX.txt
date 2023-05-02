@@ -1,0 +1,116 @@
+0000	0	05	5	REG05	0208	520	
+0000	0	06	6	REG06	0039	57	
+0000	0	07	7	REG07	0037	55	
+0000	0	08	8	REG08	000A	10	
+0000	0	09	9	REG09	00F9	249	
+0000	0	0A	10	REG0A	0028	40	
+0000	0	0B	11	REG0B	3080	12416	
+0000	0	0C	12	REG0C	3410	13328	
+0000	0	0D	13	REG0D	F399	62361	
+0000	0	0E	14	REG0E	0010	16	
+0000	0	0F	15	REG0F	F244	62020	
+0000	0	10	16	REG10	0E7E	3710	
+0000	0	11	17	REG11	60E8	24808	
+0000	0	12	18	REG12	3C73	15475	
+0000	0	14	20	REG14	1200	4608	
+0000	0	15	21	REG15	6900	26880	
+0000	0	16	22	REG16	8200	33280	
+0000	0	17	23	REG17	0000	0	
+0000	0	18	24	REG18	0000	0	
+0000	0	19	25	REG19	0000	0	
+0000	0	22	34	REG22	007F	127	
+0000	0	23	35	REG23	0000	0	
+0000	0	24	36	REG24	0000	0	
+0000	0	25	37	REG25	0000	0	
+0000	0	26	38	REG26	0000	0	
+0000	0	27	39	REG27	0000	0	
+0000	0	28	40	REG28	0000	0	
+0000	0	29	41	REG29	0000	0	
+0000	0	2A	42	REG2A	0000	0	
+0000	0	2B	43	REG2B	0000	0	
+0000	0	2C	44	REG2C	0000	0	
+0000	0	2D	45	REG2D	0000	0	
+0000	0	36	54	REG36	0004	4	
+END	
+
+******************** Export for Test *************************	
+**** 	
+******************** Notes *************************	
+**** Configuration file: MP2760GVT-XXXX	
+**** Package: FCQFN30 4 *5	
+**** Soft rev: 1.4.0.0 (Build: 2022-05-30 15:36:53)	
+**** Date: 05/02/2023	
+**** 	
+**** 	
+******************** Registers(Config) *************************	
+**** Customer Name: XXXX	
+**** 	
+**** REG05[9]:Watchdog Timer Setting when Input Absent=1-Enable	
+**** REG06[7:0]:Input Minimum Voltage Limit=4560	
+**** REG07[6:0]:Minimum System Voltage Threshold=11000	
+**** REG08[6:0]:Input Current Limit=500	
+**** REG09[10]:SRC Output Voltage Configuration=0-By register bit	
+**** REG09[11]:SRC Output Voltage Offset=0	
+**** REG09[9:0]:SRC Output Voltage=4980	
+**** REG0A[10:8]:Voltage Compensation Limit=0	
+**** REG0A[13:11]:Battery Impedance=0	
+**** REG0A[6:0]:SRC Ouput Current Limit=2000	
+**** REG0B[10:9]:Battery Low Voltage Threshold=12	
+**** REG0B[11]:DC/DC Action when Battery Low Voltage=0-INT	
+**** REG0B[12]:Pre-charge Threshold=12	
+**** REG0B[13]:Battery Low Voltage Protection Enable=1-Enable	
+**** REG0B[7:0]:Battery Discharge Current Limit=6400	
+**** REG0B[8]:Battery Discharge Current Limit Enable=0-Disable	
+**** REG0C[10:6]:VBATT_REG Setting when Warm/Cool=320	
+**** REG0C[12:11]:Charge Action when Cool=10-ICC	
+**** REG0C[14:13]:Charge Action when Warm=01-VBATT_REG	
+**** REG0C[5:4]:ICC Setting when Warm/Cool=01-1/4 times	
+**** REG0D[1:0]:Cold Threshold=01-74.2%;(0?C)	
+**** REG0D[12:10]:TS Temperature Threshold=100-14.3%;(80?C)	
+**** REG0D[13]:TS Function Action Enable when Fault=1-INT and TS action	
+**** REG0D[14]:TS Sense Point=1-Battery FET	
+**** REG0D[15]:TS Function Enable=1-Enable	
+**** REG0D[3:2]:Cool Threshold=10-64.8%;(10?C)	
+**** REG0D[5:4]:Warm Threshold=01-32.6%;(45?C)	
+**** REG0D[7:6]:Hot Threshold=10-23.0%;(60?C)	
+**** REG0D[8]:NTC_Action=1-INT and JEITA action	
+**** REG0D[9]:NTC Protection Enable=1-Enable	
+**** REG0E[6:4]:PWM Frequency=600	
+**** REG0E[7]:ADC Conversion Behavior=0-One-shot Conversion	
+**** REG0E[8]:ADC Conversion One-shot Enable=0-Disable ADC	
+**** REG0F[11:8]:Trickle Charge Current=100	
+**** REG0F[14:12]:Thermal Loop Temperature Threshold=111-120?C	
+**** REG0F[15]:Thermal loop Enable=1-Enable	
+**** REG0F[3:0]:Termination Current=200	
+**** REG0F[7:4]:Pre-charge Current=400	
+**** REG10[10:9]:Battery Cell Count=4	
+**** REG10[11]:Recharge Threshold=200	
+**** REG10[12]:TS/IMON Pin Function=0-TS	
+**** REG10[13]:BGATE Force Off=0-Not force BGATE off	
+**** REG10[14]:ACGATE Force On=0-Not force ACGATE on	
+**** REG10[4:0]:Vtrack Per Cell=150	
+**** REG10[5]:Virtual Diode Enable=1-Enable	
+**** REG10[6]:ACGATE Driver Enable=1-Enable ACGAET	
+**** REG10[7]:Battery Current Sense Resistor=0-10mohm	
+**** REG10[8]:Input Current Sense Resistor=0-10mohm	
+**** REG11[10]:Input Over Voltage Deglitch Time=0-100ns	
+**** REG11[12:11]:System UVP=00-75%;	
+**** REG11[14:13]:System OVP=11-110%	
+**** REG11[3]:Battery OVP Enable=1-Enable BATT OVP	
+**** REG11[5]:System OVP enable=1-Enable SYS OVP	
+**** REG11[7:6]:Input Over Voltage Threshold=22.4	
+**** REG11[9:8]:Input Under Voltage Threshold=3.2	
+**** REG12[0]:Charge Enable=1-Charge Enable	
+**** REG12[1]:Input Current Limit Disable=1-IIN_LIM Enable	
+**** REG12[10]:Safety Timer Extension=1-Extend by 2X	
+**** REG12[12:11]:Safety Timer=20 hours	
+**** REG12[13]:Safety Timer Enable=1-Enable	
+**** REG12[3]:SRC Mode Enable=0-Disable Discharge	
+**** REG12[4]:Charge Termination Enable=1-Enable	
+**** REG12[5]:BGATE Driver Enable=1-Enable BGATE driver block	
+**** REG12[6]:DC/DC Enable=1-Enable	
+**** REG12[8:7]:Watchdog Timer=00-Disable Timer	
+**** REG12[9]:Watchdog Feed Bit=0-Normal	
+**** REG14[13:6]:Fast Charge Current=3600	
+**** REG15[14:4]:Battery Full Voltage=16800	
+**** 	
