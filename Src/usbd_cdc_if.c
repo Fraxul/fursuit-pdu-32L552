@@ -372,7 +372,7 @@ __attribute__((noreturn)) void Task_USB_Tx() {
 
     // Wait for USB-CDC to be connected.
     while (hUsbDeviceFS.pClassData == NULL) {
-      BaseType_t notificationValue = 0;
+      UBaseType_t notificationValue = 0;
       xTaskNotifyWait(0, 0, &notificationValue, portMAX_DELAY);
     }
 

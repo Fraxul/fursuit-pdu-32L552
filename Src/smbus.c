@@ -59,9 +59,8 @@ void MX_STACK_SMBUS_Init(void)
   context.StateMachine = SMBUS_SMS_ARP_AR;
   /* checking the HAL host setting */
   assert_param(SMBUS_HANDLE_instance.Init.PeripheralMode == SMBUS_PERIPHERAL_MODE_SMBUS_HOST);
-  context.StateMachine |= SMBUS_SMS_PEC_ACTIVE;
   /* checking the HAL is in accord */
-  assert_param(SMBUS_HANDLE_instance.Init.PacketErrorCheckMode == SMBUS_PEC_ENABLE);
+  assert_param(SMBUS_HANDLE_instance.Init.PacketErrorCheckMode == SMBUS_PEC_DISABLE);
   pcontext = &context;
 
   if (STACK_SMBUS_Init( pcontext ) != HAL_OK)

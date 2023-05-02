@@ -48,7 +48,7 @@ void MX_I2C2_SMBUS_Init(void)
   hsmbus2.Init.OwnAddress2Masks = SMBUS_OA2_NOMASK;
   hsmbus2.Init.GeneralCallMode = SMBUS_GENERALCALL_DISABLE;
   hsmbus2.Init.NoStretchMode = SMBUS_NOSTRETCH_DISABLE;
-  hsmbus2.Init.PacketErrorCheckMode = SMBUS_PEC_ENABLE;
+  hsmbus2.Init.PacketErrorCheckMode = SMBUS_PEC_DISABLE;
   hsmbus2.Init.PeripheralMode = SMBUS_PERIPHERAL_MODE_SMBUS_HOST;
   hsmbus2.Init.SMBusTimeout = 0x0000853E;
   if (HAL_SMBUS_Init(&hsmbus2) != HAL_OK)
@@ -103,6 +103,12 @@ void HAL_SMBUS_MspInit(SMBUS_HandleTypeDef* smbusHandle)
 
     /* I2C2 clock enable */
     __HAL_RCC_I2C2_CLK_ENABLE();
+
+    /* I2C2 interrupt Init */
+    HAL_NVIC_SetPriority(I2C2_EV_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(I2C2_EV_IRQn);
+    HAL_NVIC_SetPriority(I2C2_ER_IRQn, 5, 0);
+    HAL_NVIC_EnableIRQ(I2C2_ER_IRQn);
   /* USER CODE BEGIN I2C2_MspInit 1 */
 
   /* USER CODE END I2C2_MspInit 1 */
@@ -131,6 +137,9 @@ void HAL_SMBUS_MspDeInit(SMBUS_HandleTypeDef* smbusHandle)
 
     HAL_GPIO_DeInit(GPIOF, GPIO_PIN_2);
 
+    /* I2C2 interrupt Deinit */
+    HAL_NVIC_DisableIRQ(I2C2_EV_IRQn);
+    HAL_NVIC_DisableIRQ(I2C2_ER_IRQn);
   /* USER CODE BEGIN I2C2_MspDeInit 1 */
 
   /* USER CODE END I2C2_MspDeInit 1 */

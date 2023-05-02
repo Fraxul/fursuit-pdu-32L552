@@ -32,7 +32,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "smbus.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/

@@ -1,5 +1,7 @@
 #include "main.h"
 #include "Shell.h"
+#include "smbus.h"
+#include "stm32_SMBUS_stack.h"
 
 #include <FreeRTOS.h>
 #include <task.h>
@@ -134,6 +136,89 @@ static void set_exec_callback(struct ush_object* self, struct ush_file_descripto
   }
 }
 
+/**
+  * @brief  Stub of an error treatment function - set to ignore most errors
+  * @param  pStackContext : Pointer to a SMBUS_StackHandleTypeDef structure that contains
+  *                the configuration information for the specified SMBUS.
+  * @retval None
+  */
+static void Error_Check(SMBUS_StackHandleTypeDef* pStackContext) {
+  if ((STACK_SMBUS_IsBlockingError(pStackContext)) || (STACK_SMBUS_IsCmdError(pStackContext))) {
+    /* No action, error symptoms are ignored */
+    pStackContext->StateMachine &= ~(SMBUS_ERROR_CRITICAL | SMBUS_COM_ERROR);
+  } else if ((pStackContext->StateMachine & SMBUS_SMS_ERR_PECERR) ==
+           SMBUS_SMS_ERR_PECERR) /* PEC error, we won't wait for any more action */
+  {
+    pStackContext->StateMachine |= SMBUS_SMS_READY;
+    pStackContext->CurrentCommand = NULL;
+    pStackContext->StateMachine &= ~(SMBUS_SMS_ACTIVE_MASK | SMBUS_SMS_ERR_PECERR);
+  }
+}
+
+
+static void smbus_read_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
+  if (argc < 2) {
+    // return predefined error message
+    printf("usage: %s address commandCode [readLength]\n", argv[0]);
+    return;
+  }
+
+  Error_Check(pcontext);
+
+  uint8_t* responseBuf = STACK_SMBUS_GetBuffer(pcontext);
+
+  uint8_t address = strtol(argv[1], nullptr, 0);
+  uint8_t commandCode = strtol(argv[2], nullptr, 0);
+  uint8_t readLength = 1;
+  if (argc >= 3) {
+    readLength = strtol(argv[3], nullptr, 0);
+    if (readLength != 1 && readLength != 2 && readLength != 4) {
+      readLength = 1;
+    }
+  }
+
+  printf("address = 0x%x commandCode=0x%x readLength=%u\n", address, commandCode, readLength);
+
+
+  st_command_t command;
+  command.cmnd_code = commandCode;
+  command.cmnd_query = READ;
+  command.cmnd_master_Tx_size = 1;
+  command.cmnd_master_Rx_size = readLength;
+
+  HAL_StatusTypeDef st = STACK_SMBUS_HostCommand(pcontext, &command, address, READ);
+  if (st != HAL_OK) {
+    printf("Bad HAL response %u from STACK_SMBUS_HostCommand\n", st);
+    return;
+  }
+
+
+  for (int i = 0; i < 100; ++i) {
+    if (STACK_SMBUS_IsReady(pcontext) == SMBUS_SMS_READY)
+      break;
+    vTaskDelay(pdMS_TO_TICKS(1));
+  }
+
+  if (STACK_SMBUS_IsReady(pcontext) != SMBUS_SMS_READY) {
+    printf("SMBUS stack did not become ready after finishing busy. state = 0x%lx\n", pcontext->StateMachine);
+    return;
+  }
+
+
+  switch (readLength) {
+    default:
+    case 1:
+      printf("%02x\n", responseBuf[0]);
+      break;
+    case 2:
+      printf("%04lx\n", *reinterpret_cast<uint16_t*>(responseBuf));
+      break;
+    case 4:
+      printf("%08lx\n", *reinterpret_cast<uint32_t*>(responseBuf));
+      break;
+  }
+}
+
 // led file get data callback
 size_t led_get_data_callback(struct ush_object* self, struct ush_file_descriptor const* file, uint8_t** data) {
   // read current led state
@@ -231,6 +316,12 @@ static const struct ush_file_descriptor cmd_files[] = {
         .description = "list tasks",
         .help = NULL,
         .exec = ps_exec_callback,
+    },
+    {
+        .name = "smbus_read",
+        .description = "SMBUS Read",
+        .help = NULL,
+        .exec = smbus_read_exec_callback,
     },
 
 };

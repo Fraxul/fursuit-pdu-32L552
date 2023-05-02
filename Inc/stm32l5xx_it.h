@@ -56,6 +56,8 @@ void DMA1_Channel1_IRQHandler(void);
 void DMA1_Channel2_IRQHandler(void);
 void DMA1_Channel3_IRQHandler(void);
 void TIM6_IRQHandler(void);
+void I2C2_EV_IRQHandler(void);
+void I2C2_ER_IRQHandler(void);
 void LPUART1_IRQHandler(void);
 void USB_FS_IRQHandler(void);
 void UCPD1_IRQHandler(void);
