@@ -1,7 +1,9 @@
 #include "main.h"
 #include "Shell.h"
+#include "log.h"
 #include "smbus.h"
 #include "stm32_SMBUS_stack.h"
+#include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
 
 #include <FreeRTOS.h>
 #include <task.h>
@@ -111,6 +113,19 @@ static void ps_exec_callback(struct ush_object* self, struct ush_file_descriptor
 
   vPortFree(pxTaskStatusArray);
 }
+
+static void dmesg_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
+  const char *chunk1 = nullptr, *chunk2 = nullptr;
+  size_t l1 = 0, l2 = 0;
+  log_read(&chunk1, &l1, &chunk2, &l2);
+  if (l1) {
+    write(STDOUT_FILENO, chunk1, l1);
+  }
+  if (l2) {
+    write(STDOUT_FILENO, chunk2, l2);
+  }
+}
+
 
 
 // set file execute callback
@@ -305,25 +320,10 @@ static const struct ush_file_descriptor dev_files[] = {
 
 // cmd files descriptor
 static const struct ush_file_descriptor cmd_files[] = {
-    {
-        .name = "reboot",
-        .description = "reboot device",
-        .help = NULL,
-        .exec = reboot_exec_callback,
-    },
-    {
-        .name = "ps",
-        .description = "list tasks",
-        .help = NULL,
-        .exec = ps_exec_callback,
-    },
-    {
-        .name = "smbus_read",
-        .description = "SMBUS Read",
-        .help = NULL,
-        .exec = smbus_read_exec_callback,
-    },
-
+    { .name = "reboot",     .description = "reboot device", .help = NULL, .exec = reboot_exec_callback, },
+    { .name = "ps",         .description = "list tasks",    .help = NULL, .exec = ps_exec_callback, },
+    { .name = "dmesg",      .description = "show logs",     .help = NULL, .exec = dmesg_exec_callback, },
+    { .name = "smbus_read", .description = "SMBUS Read",    .help = NULL, .exec = smbus_read_exec_callback, },
 };
 
 // root directory handler

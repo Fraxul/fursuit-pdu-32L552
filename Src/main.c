@@ -76,6 +76,7 @@ int main(void)
 {
   /* USER CODE BEGIN 1 */
 
+  //setvbuf(stderr, NULL, _IOLBF, 0);
   /* USER CODE END 1 */
 
   /* MCU Configuration--------------------------------------------------------*/
