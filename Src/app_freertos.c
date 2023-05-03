@@ -60,7 +60,7 @@ static StaticStreamBuffer_t staticUsbTxStream;
 static uint8_t staticUsbTxStreamStorage[usbTxStreamSize + 1];
 
 #define DECLARE_TASK(TaskName, StackSizeInWords) \
-  osThreadId TaskName##Handle;                   \
+  TaskHandle_t TaskName##Handle;                   \
   uint32_t TaskName##Stack[StackSizeInWords];    \
   StaticTask_t TaskName##ControlBlock;    \
   extern void Task_##TaskName(void *arg);  \
@@ -71,6 +71,7 @@ static uint8_t staticUsbTxStreamStorage[usbTxStreamSize + 1];
 
 DECLARE_TASK(USB_Tx, 128);
 DECLARE_TASK(Shell, 256);
+DECLARE_TASK(PowerManagement, 192);
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -101,7 +102,7 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 __weak void configureTimerForRunTimeStats(void)
 {
   LL_TIM_SetCounter(TIM7, 0);
-  LL_TIM_SetPrescaler(TIM7, F_CPU / 10000UL);
+  LL_TIM_SetPrescaler(TIM7, (F_CPU / 10000UL));
   LL_TIM_SetCounterMode(TIM7, LL_TIM_COUNTERMODE_UP);
   LL_TIM_EnableCounter(TIM7);
 }
@@ -124,6 +125,7 @@ void vApplicationIdleHook( void )
    important that vApplicationIdleHook() is permitted to return to its calling
    function, because it is the responsibility of the idle task to clean up
    memory allocated by the kernel to any task that has since been deleted. */
+   __WFI();
 }
 /* USER CODE END 2 */
 
@@ -176,7 +178,8 @@ void MX_FREERTOS_Init(void) {
   /* USER CODE BEGIN RTOS_THREADS */
 
   START_TASK(Shell, osPriorityNormal);
-  START_TASK(USB_Tx, osPriorityHigh);
+  START_TASK(USB_Tx, osPriorityRealtime7);
+  START_TASK(PowerManagement, osPriorityNormal);
 
   /* USER CODE END RTOS_THREADS */
 

@@ -6,6 +6,8 @@
 extern "C" {
 #endif
 
+
+void logprintf(const char* fmt, ...);
 void log_append(const char*, size_t);
 void log_read(const char** outChunk1, size_t* outChunk1Length, const char** outChunk2, size_t* outChunk2Length);
 

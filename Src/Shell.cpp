@@ -13,7 +13,6 @@
 extern "C" StreamBufferHandle_t usbRxStream;
 extern "C" StreamBufferHandle_t usbTxStream;
 
-
 static uint8_t scratch[ushFileScratchLen];
 uint8_t* ushFileScratchBuf() { return scratch; };
 
@@ -118,11 +117,23 @@ static void dmesg_exec_callback(struct ush_object* self, struct ush_file_descrip
   const char *chunk1 = nullptr, *chunk2 = nullptr;
   size_t l1 = 0, l2 = 0;
   log_read(&chunk1, &l1, &chunk2, &l2);
-  if (l1) {
-    write(STDOUT_FILENO, chunk1, l1);
+
+  while (l1) {
+    size_t sent = xStreamBufferSend(usbTxStream, chunk1, (l1 > 64 ? 64 : l1), 0);
+    if (!sent) {
+      vTaskDelay(1);
+    }
+    l1 -= sent;
+    chunk1 += sent;
   }
-  if (l2) {
-    write(STDOUT_FILENO, chunk2, l2);
+
+  while (l2) {
+    size_t sent = xStreamBufferSend(usbTxStream, chunk2, (l2 > 64 ? 64 : l2), 0);
+    if (!sent) {
+      vTaskDelay(1);
+    }
+    l2 -= sent;
+    chunk2 += sent;
   }
 }
 
@@ -151,24 +162,6 @@ static void set_exec_callback(struct ush_object* self, struct ush_file_descripto
   }
 }
 
-/**
-  * @brief  Stub of an error treatment function - set to ignore most errors
-  * @param  pStackContext : Pointer to a SMBUS_StackHandleTypeDef structure that contains
-  *                the configuration information for the specified SMBUS.
-  * @retval None
-  */
-static void Error_Check(SMBUS_StackHandleTypeDef* pStackContext) {
-  if ((STACK_SMBUS_IsBlockingError(pStackContext)) || (STACK_SMBUS_IsCmdError(pStackContext))) {
-    /* No action, error symptoms are ignored */
-    pStackContext->StateMachine &= ~(SMBUS_ERROR_CRITICAL | SMBUS_COM_ERROR);
-  } else if ((pStackContext->StateMachine & SMBUS_SMS_ERR_PECERR) ==
-           SMBUS_SMS_ERR_PECERR) /* PEC error, we won't wait for any more action */
-  {
-    pStackContext->StateMachine |= SMBUS_SMS_READY;
-    pStackContext->CurrentCommand = NULL;
-    pStackContext->StateMachine &= ~(SMBUS_SMS_ACTIVE_MASK | SMBUS_SMS_ERR_PECERR);
-  }
-}
 
 
 static void smbus_read_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
@@ -178,7 +171,7 @@ static void smbus_read_exec_callback(struct ush_object* self, struct ush_file_de
     return;
   }
 
-  Error_Check(pcontext);
+  MX_SMBUS_Error_Check(pcontext);
 
   uint8_t* responseBuf = STACK_SMBUS_GetBuffer(pcontext);
 

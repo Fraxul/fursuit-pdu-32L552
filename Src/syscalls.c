@@ -47,7 +47,11 @@ int fputc(int ch, FILE *f) {
   char c = (char) ch;
 
   log_append(&c, 1);
-  xStreamBufferSend(usbTxStream, &c, 1, portMAX_DELAY);
+
+
+  while (xStreamBufferSend(usbTxStream, &c, 1, 0) == 0) {
+    vPortYield();
+  }
   return ch;
 }
 
@@ -62,7 +66,9 @@ int _write(int file, char *data, int len) {
   while (len) {
     // xStreamBufferSend seems to deadlock if we try and send a single datum that's larger than the stream.
     // We instead break writes into 64 byte chunks; that's how big the USB_Tx task's recv buffer is, anyway.
-    size_t sent = xStreamBufferSend(usbTxStream, data, (len > 64 ? 64 : len), portMAX_DELAY);
+    size_t sent = xStreamBufferSend(usbTxStream, data, (len > 64 ? 64 : len), 0);
+    if (!sent)
+      vPortYield();
     len -= sent;
     data += sent;
   }

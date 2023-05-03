@@ -11,6 +11,7 @@ extern "C" {
 #endif
 
 void MX_STACK_SMBUS_Init(void);
+void MX_SMBUS_Error_Check(SMBUS_StackHandleTypeDef* pStackContext_);
 
 #ifdef __cplusplus
 }

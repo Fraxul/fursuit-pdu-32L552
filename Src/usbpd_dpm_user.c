@@ -35,8 +35,11 @@
 #include "stdio.h"
 #endif /* _TRACE */
 /* USER CODE BEGIN Includes */
-#include <stdio.h>
+#include "log.h"
 #include <string.h>
+#include "PowerManagement.h"
+#include "FreeRTOS.h"
+#include "timers.h"
 
 /* USER CODE END Includes */
 
@@ -101,11 +104,14 @@ void                USBPD_DPM_UserExecute(void *argument);
 #endif /* _TRACE */
 /* USER CODE BEGIN Private_Macro */
 
+#if 0
 #undef DPM_USER_DEBUG_TRACE
 #undef DPM_USER_ERROR_TRACE
 
-#define DPM_USER_DEBUG_TRACE(_PORT_, msg, ...) printf("DPM DEBUG: " msg "\n", ## __VA_ARGS__ )
-#define DPM_USER_ERROR_TRACE(_PORT_, _STATUS_, msg, ...) printf("DPM ERROR %x: " msg "\n", _STATUS_, ## __VA_ARGS__ )
+#define DPM_USER_DEBUG_TRACE(_PORT_, msg, ...) logprintf("DPM DEBUG: " msg "\n", ## __VA_ARGS__ )
+#define DPM_USER_ERROR_TRACE(_PORT_, _STATUS_, msg, ...) \
+  do { if (USBPD_OK != _STATUS_) { logprintf("DPM ERROR %x: " msg "\n", _STATUS_, ##__VA_ARGS__); } } while (0)
+#endif
 /* USER CODE END Private_Macro */
 /**
   * @}
@@ -120,6 +126,7 @@ void                USBPD_DPM_UserExecute(void *argument);
 
 #define kMaxSrcPDOs 8
 USBPD_PDO_TypeDef srcPDOs[kMaxSrcPDOs];
+xTimerHandle hardResetTimer;
 
 /* USER CODE END Private_Variables */
 /**
@@ -131,6 +138,14 @@ USBPD_PDO_TypeDef srcPDOs[kMaxSrcPDOs];
   * @{
   */
 /* USER CODE BEGIN USBPD_USER_PRIVATE_FUNCTIONS_Prototypes */
+
+void HardResetTimerFn(TimerHandle_t hTimer) {
+  if (srcPDOs[0].d32 == 0) {
+    // No PDOs have been received yet, so issue a hard reset.
+    DPM_USER_DEBUG_TRACE(0, "Hard-reset timer expired");
+    USBPD_DPM_RequestHardReset(/*PortNum=*/ 0);
+  }
+}
 
 /* USER CODE END USBPD_USER_PRIVATE_FUNCTIONS_Prototypes */
 /**
@@ -159,6 +174,8 @@ USBPD_PDO_TypeDef srcPDOs[kMaxSrcPDOs];
 USBPD_StatusTypeDef USBPD_DPM_UserInit(void)
 {
 /* USER CODE BEGIN USBPD_DPM_UserInit */
+  hardResetTimer = xTimerCreate("CAD HardReset", pdMS_TO_TICKS(2000), /*repeating=*/ pdFALSE, 0, HardResetTimerFn);
+
   return USBPD_OK;
 /* USER CODE END USBPD_DPM_UserInit */
 }
@@ -198,7 +215,29 @@ void USBPD_DPM_UserExecute(void *argument)
 void USBPD_DPM_UserCableDetection(uint8_t PortNum, USBPD_CAD_EVENT State)
 {
 /* USER CODE BEGIN USBPD_DPM_UserCableDetection */
-DPM_USER_DEBUG_TRACE(PortNum, "ADVICE: update USBPD_DPM_UserCableDetection");
+switch (State) {
+    case USBPD_CAD_EVENT_ATTACHED:
+    case USBPD_CAD_EVENT_ATTEMC:
+      DPM_USER_DEBUG_TRACE(PortNum, "USBPD_DPM_UserCableDetection: Attached (State = %d)", State);
+      // Start a timer that will send a hard reset if we don't receive PDOs from the source shortly.
+      // This handles the case where the microcontroller reboots while a Type-C cable is plugged in;
+      // the power contract will still be active, but we don't know anything about it, so we can't
+      // manage the charger effectively.
+      xTimerReset(hardResetTimer, portMAX_DELAY);
+      break;
+
+    case USBPD_CAD_EVENT_DETACHED:
+    case USBPD_CAD_EVENT_CABLE_DETACHED:
+      DPM_USER_DEBUG_TRACE(PortNum, "USBPD_DPM_UserCableDetection: Detached (State = %d)", State);
+      PM_DisconnectPower();
+      break;
+
+    default:
+      DPM_USER_DEBUG_TRACE(PortNum, "ADVICE: update USBPD_DPM_UserCableDetection (State = %d)", State);
+      break;
+}
+
+
 /* USER CODE END USBPD_DPM_UserCableDetection */
 }
 
@@ -243,8 +282,11 @@ void USBPD_DPM_Notification(uint8_t PortNum, USBPD_NotifyEventValue_TypeDef Even
 //      break;
 //    case USBPD_NOTIFY_POWER_SWAP_TO_SNK_DONE:
 //      break;
-//    case USBPD_NOTIFY_STATE_SNK_READY:
-//      break;
+    case USBPD_NOTIFY_STATE_SNK_READY:
+      DPM_USER_DEBUG_TRACE(PortNum, "Sink ready, notifying PM of power state change");
+      inputPowerState.isReady = 1;
+      PM_NotifyInputPowerStateUpdated();
+      break;
 //    case USBPD_NOTIFY_HARDRESET_RX:
 //    case USBPD_NOTIFY_HARDRESET_TX:
 //      break;
@@ -283,7 +325,8 @@ void USBPD_DPM_Notification(uint8_t PortNum, USBPD_NotifyEventValue_TypeDef Even
 void USBPD_DPM_HardReset(uint8_t PortNum, USBPD_PortPowerRole_TypeDef CurrentRole, USBPD_HR_Status_TypeDef Status)
 {
 /* USER CODE BEGIN USBPD_DPM_HardReset */
-  DPM_USER_DEBUG_TRACE(PortNum, "ADVICE: update USBPD_DPM_HardReset");
+  DPM_USER_DEBUG_TRACE(PortNum, "Hard reset received, disconnecting power.");
+  PM_DisconnectPower();
 /* USER CODE END USBPD_DPM_HardReset */
 }
 
@@ -343,12 +386,11 @@ void USBPD_DPM_SetDataInfo(uint8_t PortNum, USBPD_CORE_DataInfoType_TypeDef Data
   case USBPD_CORE_DATATYPE_RCV_SRC_PDO:       /*!< Storage of Received Source PDO values        */
     memset(srcPDOs, 0, sizeof(srcPDOs));
     memcpy(srcPDOs, Ptr, Size);
-    size_t pdoCount = Size / 4;
-    DPM_USER_DEBUG_TRACE(PortNum, "Received %u PDOs from source", pdoCount);
-    for (size_t i = 0; i < pdoCount; ++i) {
-      DPM_USER_DEBUG_TRACE(PortNum, "PDO %u: %08lx", i, srcPDOs[i].d32);
-    }
 
+    DPM_USER_DEBUG_TRACE(PortNum, "Received %u PDOs from source", (Size / 4));
+
+    // Kill the reset timer now that we have PDOs
+    xTimerStop(hardResetTimer, portMAX_DELAY);
 
     break;
 //  case USBPD_CORE_DATATYPE_RCV_SNK_PDO:       /*!< Storage of Received Sink PDO values          */
@@ -391,43 +433,66 @@ void USBPD_DPM_SNK_EvaluateCapabilities(uint8_t PortNum, uint32_t *PtrRequestDat
   uint8_t bestPDOIndex = 0;
   uint32_t bestPDOPower_uW = 0; // millivolts * milliamps = microwatts
 
+  inputPowerState.isReady = 0;
+
   for (size_t i = 0; i < kMaxSrcPDOs; ++i) {
     if (srcPDOs[i].d32 == 0)
       break; // end of array is zero-filled.
 
     USBPD_PDO_TypeDef pdo = srcPDOs[i];
-
     uint32_t power_uW = 0;
 
     switch (pdo.GenericPDO.PowerObject) {
       case USBPD_CORE_PDO_TYPE_FIXED: {
+        DPM_USER_DEBUG_TRACE(PortNum, "PDO %u: Fixed, %u mV, %u mA", i, pdo.SRCFixedPDO.VoltageIn50mVunits * 50, pdo.SRCFixedPDO.MaxCurrentIn10mAunits * 10);
+        power_uW = pdo.SRCFixedPDO.VoltageIn50mVunits * 50 * pdo.SRCFixedPDO.MaxCurrentIn10mAunits * 10;
+        if (power_uW > bestPDOPower_uW) {
+          bestPDOPower_uW = power_uW;
+          bestPDOIndex = i;
 
-      DPM_USER_DEBUG_TRACE(PortNum, "PDO %u: Fixed, %u mV, %u mA", i, pdo.SRCFixedPDO.VoltageIn50mVunits * 50, pdo.SRCFixedPDO.MaxCurrentIn10mAunits * 10);
-      power_uW = pdo.SRCFixedPDO.VoltageIn50mVunits * 50 * pdo.SRCFixedPDO.MaxCurrentIn10mAunits * 10;
+          inputPowerState.maxCurrent_mA = pdo.SRCFixedPDO.MaxCurrentIn10mAunits * 10;
+          inputPowerState.minVoltage_mV = inputPowerState.maxVoltage_mV = pdo.SRCFixedPDO.VoltageIn50mVunits * 50;
+          inputPowerState.maxPower_mW = power_uW / 1000;
+        }
       } break;
 
       case USBPD_CORE_PDO_TYPE_BATTERY: {
-      DPM_USER_DEBUG_TRACE(PortNum, "PDO %u: Battery, %u mV - %u mV, %u mW", i, pdo.SRCBatteryPDO.MinVoltageIn50mVunits * 50, pdo.SRCBatteryPDO.MaxVoltageIn50mVunits * 50, pdo.SRCBatteryPDO.MaxAllowablePowerIn250mWunits * 250);
-      power_uW = pdo.SRCBatteryPDO.MaxAllowablePowerIn250mWunits * 250000;
+        DPM_USER_DEBUG_TRACE(PortNum, "PDO %u: Battery, %u mV - %u mV, %u mW", i, pdo.SRCBatteryPDO.MinVoltageIn50mVunits * 50, pdo.SRCBatteryPDO.MaxVoltageIn50mVunits * 50, pdo.SRCBatteryPDO.MaxAllowablePowerIn250mWunits * 250);
+        power_uW = pdo.SRCBatteryPDO.MaxAllowablePowerIn250mWunits * 250000;
+        if (power_uW > bestPDOPower_uW) {
+          bestPDOPower_uW = power_uW;
+          bestPDOIndex = i;
+
+          inputPowerState.minVoltage_mV = pdo.SRCBatteryPDO.MinVoltageIn50mVunits * 50;
+          inputPowerState.maxVoltage_mV = pdo.SRCBatteryPDO.MaxVoltageIn50mVunits * 50;
+          inputPowerState.maxPower_mW = pdo.SRCBatteryPDO.MaxAllowablePowerIn250mWunits * 250;
+
+          // Max current should be capped at max power at minimum voltage
+          inputPowerState.maxCurrent_mA = (inputPowerState.maxPower_mW * 1000) / inputPowerState.minVoltage_mV;
+        }
       } break;
 
       case USBPD_CORE_PDO_TYPE_VARIABLE: {
-      DPM_USER_DEBUG_TRACE(PortNum, "PDO %u: Variable, %u mV - %u mV, %u mA", i, pdo.SRCVariablePDO.MinVoltageIn50mVunits * 50, pdo.SRCVariablePDO.MaxVoltageIn50mVunits * 50, pdo.SRCVariablePDO.MaxCurrentIn10mAunits * 10);
-      power_uW = pdo.SRCVariablePDO.MaxVoltageIn50mVunits * 50 * pdo.SRCVariablePDO.MaxCurrentIn10mAunits * 10;
-
+        DPM_USER_DEBUG_TRACE(PortNum, "PDO %u: Variable, %u mV - %u mV, %u mA", i, pdo.SRCVariablePDO.MinVoltageIn50mVunits * 50, pdo.SRCVariablePDO.MaxVoltageIn50mVunits * 50, pdo.SRCVariablePDO.MaxCurrentIn10mAunits * 10);
+        power_uW = pdo.SRCVariablePDO.MaxVoltageIn50mVunits * 50 * pdo.SRCVariablePDO.MaxCurrentIn10mAunits * 10;
+        if (power_uW > bestPDOPower_uW) {
+          bestPDOPower_uW = power_uW;
+          bestPDOIndex = i;
+          inputPowerState.minVoltage_mV = pdo.SRCVariablePDO.MinVoltageIn50mVunits * 50;
+          inputPowerState.maxVoltage_mV = pdo.SRCVariablePDO.MaxVoltageIn50mVunits * 50;
+          inputPowerState.maxCurrent_mA = pdo.SRCVariablePDO.MaxCurrentIn10mAunits * 10;
+          inputPowerState.maxPower_mW = (inputPowerState.maxVoltage_mV * inputPowerState.maxCurrent_mA) / 1000;
+        }
       } break;
 
       default:
       DPM_USER_DEBUG_TRACE(PortNum, "Unhandled extended PDO type %08lx", srcPDOs[i].d32);
     }
 
-    if (power_uW > bestPDOPower_uW) {
-      bestPDOPower_uW = power_uW;
-      bestPDOIndex = i;
-    }
   }
 
-  DPM_USER_DEBUG_TRACE(PortNum, "Best PDO is at index %u with %lu milliwatts", bestPDOIndex, bestPDOPower_uW / 1000);
+  DPM_USER_DEBUG_TRACE(PortNum, "Best PDO is at index %u. Input power state: %lu - %lu mV, %lu mA, %lu mW",
+    bestPDOIndex, inputPowerState.minVoltage_mV, inputPowerState.maxVoltage_mV, inputPowerState.maxCurrent_mA, inputPowerState.maxPower_mW);
 
 
   // Build request object based on the selected source PDO
@@ -444,7 +509,7 @@ void USBPD_DPM_SNK_EvaluateCapabilities(uint8_t PortNum, uint32_t *PtrRequestDat
     rdo.BatteryRDO.MaxOperatingPowerIn250mWunits = srcPDOs[bestPDOIndex].SNKBatteryPDO.OperationalPowerIn250mWunits;
     rdo.BatteryRDO.OperatingPowerIn250mWunits = rdo.BatteryRDO.MaxOperatingPowerIn250mWunits;
   } else {
-    rdo.FixedVariableRDO.MaxOperatingCurrent10mAunits = (*PtrPowerObjectType  == USBPD_CORE_PDO_TYPE_FIXED ? srcPDOs[bestPDOIndex].SRCFixedPDO.MaxCurrentIn10mAunits : srcPDOs[bestPDOIndex].SRCVariablePDO.MaxCurrentIn10mAunits);
+    rdo.FixedVariableRDO.MaxOperatingCurrent10mAunits = (*PtrPowerObjectType == USBPD_CORE_PDO_TYPE_FIXED ? srcPDOs[bestPDOIndex].SRCFixedPDO.MaxCurrentIn10mAunits : srcPDOs[bestPDOIndex].SRCVariablePDO.MaxCurrentIn10mAunits);
     rdo.FixedVariableRDO.OperatingCurrentIn10mAunits = rdo.FixedVariableRDO.MaxOperatingCurrent10mAunits;
   }
 
