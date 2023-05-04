@@ -576,6 +576,7 @@ void USBPD_DPM_EnterErrorRecovery(uint8_t PortNum)
 {
 /* USER CODE BEGIN USBPD_DPM_EnterErrorRecovery */
   /* Inform CAD to enter recovery mode */
+  DPM_USER_DEBUG_TRACE(PortNum, "USBPD_DPM_EnterErrorRecovery");
   USBPD_CAD_EnterErrorRecovery(PortNum);
 /* USER CODE END USBPD_DPM_EnterErrorRecovery */
 }
@@ -1008,6 +1009,17 @@ USBPD_StatusTypeDef USBPD_DPM_RequestSecurityRequest(uint8_t PortNum)
   */
 
 /* USER CODE BEGIN USBPD_USER_PRIVATE_FUNCTIONS */
+
+void USBPD_DPM_ErrorHandler(void)
+{
+  // Override from usbpd_dpm_core.c, where this is declared 'weak'
+
+  /* This function is called to block application execution
+     in case of an unexpected behavior
+     another solution could be to reset application */
+  logprintf(" ~~~ USBPD_DPM_ErrorHandler triggered! ~~~\n");
+  abort();
+}
 
 /* USER CODE END USBPD_USER_PRIVATE_FUNCTIONS */
 

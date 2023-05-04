@@ -102,9 +102,13 @@ bool MP2760_RMWReg(uint8_t regAddr, uint16_t bitMask, uint16_t bitsToSet) {
   return MP2760_WriteReg(regAddr, value);
 }
 
-bool MP2760_SetChargeEnabled(bool enabled) {
-  // REG12 (Configuration Register 4), bit 0: CHG_EN
-  return MP2760_RMWReg(0x12, ~(0x0001), enabled ? 0x0001 : 0x0000);
+bool MP2760_SetPowerInputEnabled(bool enabled) {
+  // Turns charging and the DC/DC converter on or off.
+  // REG12 (Configuration Register 4)
+  // bit 6: DC/DC_EN -- Enable (1) or disable (0) the DC/DC converter.
+  // bit 0: CHG_EN -- Enable (1) or disable (0) battery charging.
+  const uint16_t bits = 0b0100'0001;
+  return MP2760_RMWReg(0x12, ~(bits), enabled ? bits : 0);
 }
 
 bool MP2760_SetInputCurrentLimit(uint32_t inputCurrent_mA) {
@@ -145,14 +149,17 @@ void Task_PowerManagement(void*) {
     vTaskSuspend(nullptr); // Stop this task for debugging.
   }
 
-  logprintf("Task_PowerManagement: InitDefaults() done\n");
-
+  // Set up for the basic USB power limit.
+  MP2760_SetPowerInputEnabled(false);
+  MP2760_SetInputCurrentLimit(500);
   inputPowerState.isReady = 0;
   inputPowerState.minVoltage_mV = 5000;
   inputPowerState.maxVoltage_mV = 5000;
   inputPowerState.maxCurrent_mA = 500;
   inputPowerState.maxPower_mW = 2500;
 
+
+  logprintf("Task_PowerManagement: InitDefaults() done\n");
 
   while (true) {
     uint32_t notificationValue = 0;
@@ -162,9 +169,15 @@ void Task_PowerManagement(void*) {
       inputPowerState.isReady, inputPowerState.minVoltage_mV, inputPowerState.maxVoltage_mV,
       inputPowerState.maxCurrent_mA, inputPowerState.maxPower_mW);
 
+    if (inputPowerState.isReady) {
+      // Give VBus some time to settle, then check isReady again.
+      vTaskDelay(pdMS_TO_TICKS(1000));
+    }
 
     if (inputPowerState.isReady == 0) {
-      MP2760_SetChargeEnabled(false);
+      MP2760_InitDefaults();
+
+      MP2760_SetPowerInputEnabled(false);
       MP2760_SetInputCurrentLimit(500); // Return to the basic USB power limit
       continue;
     }
@@ -175,11 +188,12 @@ void Task_PowerManagement(void*) {
     uint32_t currentLimitStep = inputPowerState.maxCurrent_mA / 5;
     MP2760_SetInputCurrentLimit(currentLimitStep);
     vTaskDelay(pdMS_TO_TICKS(1000));
-    MP2760_SetChargeEnabled(true);
+    MP2760_SetPowerInputEnabled(true);
 
     for (int i = 2; i <= 5; ++i) {
       if (inputPowerState.isReady == 0) {
-        MP2760_SetChargeEnabled(false);
+        MP2760_SetPowerInputEnabled(false);
+        MP2760_SetInputCurrentLimit(500);
         break;
       }
 
