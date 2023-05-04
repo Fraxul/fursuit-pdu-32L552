@@ -25,6 +25,7 @@
 #include "icache.h"
 #include "usart.h"
 #include "rtc.h"
+#include "tim.h"
 #include "ucpd.h"
 #include "usbpd.h"
 #include "usb_device.h"
@@ -105,6 +106,7 @@ int main(void)
   MX_UCPD1_Init();
   MX_I2C2_SMBUS_Init();
   MX_USB_Device_Init();
+  MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
 
   MX_STACK_SMBUS_Init();

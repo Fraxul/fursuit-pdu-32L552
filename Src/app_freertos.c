@@ -99,17 +99,23 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
 
 /* USER CODE BEGIN 1 */
 /* Functions needed when configGENERATE_RUN_TIME_STATS is on */
-__weak void configureTimerForRunTimeStats(void)
+#define PERF_TIMER TIM7
+void configureTimerForRunTimeStats(void)
 {
-  LL_TIM_SetCounter(TIM7, 0);
-  LL_TIM_SetPrescaler(TIM7, (F_CPU / 10000UL));
-  LL_TIM_SetCounterMode(TIM7, LL_TIM_COUNTERMODE_UP);
-  LL_TIM_EnableCounter(TIM7);
+  LL_TIM_DisableCounter(PERF_TIMER);
+  LL_TIM_DisableARRPreload(PERF_TIMER);
+  LL_TIM_SetAutoReload(PERF_TIMER, IS_TIM_32B_COUNTER_INSTANCE(PERF_TIMER) ? 0xffffffffUL : 0xffffUL);
+  LL_TIM_SetCounter(PERF_TIMER, 0);
+  LL_TIM_SetPrescaler(PERF_TIMER, (F_CPU / 10000UL));
+  if (IS_TIM_COUNTER_MODE_SELECT_INSTANCE(PERF_TIMER)) {
+    LL_TIM_SetCounterMode(PERF_TIMER, LL_TIM_COUNTERMODE_UP);
+  }
+  LL_TIM_EnableCounter(PERF_TIMER);
 }
 
-__weak unsigned long getRunTimeCounterValue(void)
+unsigned long getRunTimeCounterValue(void)
 {
-  return LL_TIM_GetCounter(TIM7);
+  return LL_TIM_GetCounter(PERF_TIMER);
 }
 /* USER CODE END 1 */
 
