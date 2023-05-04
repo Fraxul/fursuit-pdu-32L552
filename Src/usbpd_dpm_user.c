@@ -104,7 +104,7 @@ void                USBPD_DPM_UserExecute(void *argument);
 #endif /* _TRACE */
 /* USER CODE BEGIN Private_Macro */
 
-#if 0
+#if 1
 #undef DPM_USER_DEBUG_TRACE
 #undef DPM_USER_ERROR_TRACE
 

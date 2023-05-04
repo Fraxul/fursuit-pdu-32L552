@@ -138,6 +138,16 @@ static void dmesg_exec_callback(struct ush_object* self, struct ush_file_descrip
 }
 
 
+static void log_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
+  if (argc == 1) {
+    logprintf("--- Mark ---\n");
+    return;
+  }
+  for (int i = 1; i < argc; ++i) {
+    logprintf("%s\n", argv[i]);
+  }
+}
+
 
 // set file execute callback
 static void set_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
@@ -313,10 +323,11 @@ static const struct ush_file_descriptor dev_files[] = {
 
 // cmd files descriptor
 static const struct ush_file_descriptor cmd_files[] = {
-    { .name = "reboot",     .description = "reboot device", .help = NULL, .exec = reboot_exec_callback, },
-    { .name = "ps",         .description = "list tasks",    .help = NULL, .exec = ps_exec_callback, },
-    { .name = "dmesg",      .description = "show logs",     .help = NULL, .exec = dmesg_exec_callback, },
-    { .name = "smbus_read", .description = "SMBUS Read",    .help = NULL, .exec = smbus_read_exec_callback, },
+    { .name = "reboot",     .description = "reboot device",               .help = NULL, .exec = reboot_exec_callback, },
+    { .name = "ps",         .description = "list tasks",                  .help = NULL, .exec = ps_exec_callback, },
+    { .name = "dmesg",      .description = "show logs",                   .help = NULL, .exec = dmesg_exec_callback, },
+    { .name = "log",        .description = "write data to dmesg log",     .help = NULL, .exec = log_exec_callback, },
+    { .name = "smbus_read", .description = "SMBUS Read",                  .help = NULL, .exec = smbus_read_exec_callback, },
 };
 
 // root directory handler

@@ -11,7 +11,69 @@
 char sLogBuffer[LOG_BUFFER_SIZE];
 uint16_t sLogWritePtr = 0;
 
+static volatile bool sLogTx_DMABusy = false;
+static volatile uint16_t sLogTx_NextReadPtr = 0;
+
+
+#define LOG_DMA_PERIPH DMA1
+#define DMA_TARGET LOG_DMA_PERIPH, LL_DMA_CHANNEL_3
+
 extern "C" {
+
+  // Must be called from within a critical section (or the DMA IRQ handler)
+  void LogDMA_StartTx() {
+    if (sLogTx_DMABusy)
+      return; // DMA is busy, can't do anything.
+
+    if (sLogTx_NextReadPtr == sLogWritePtr)
+      return; // nothing to transmit.
+
+    LL_DMA_SetMemoryAddress(DMA_TARGET, (uint32_t) (sLogBuffer + sLogTx_NextReadPtr));
+
+    uint32_t dmaLength;
+    if (sLogWritePtr < sLogTx_NextReadPtr) {
+      // Write pointer has wrapped around. This DMA will transmit from our current position
+      // to the end of the buffer, then we'll wrap around and pick up the rest of it on the
+      // next transfer.
+      dmaLength = LOG_BUFFER_SIZE - sLogTx_NextReadPtr;
+      sLogTx_NextReadPtr = 0;
+    } else {
+      // See if we were left pointing at the end of the buffer.
+      if (sLogTx_NextReadPtr >= LOG_BUFFER_SIZE)
+        sLogTx_NextReadPtr = 0;
+
+      dmaLength = sLogWritePtr - sLogTx_NextReadPtr;
+      sLogTx_NextReadPtr += dmaLength;
+    }
+
+    if (dmaLength == 0)
+      return; // nothing to do?
+
+
+    LL_DMA_SetDataLength(DMA_TARGET, dmaLength);
+
+    LL_LPUART_ClearFlag_TC(LPUART1);
+    LL_DMA_EnableChannel(DMA_TARGET);
+    LL_LPUART_EnableIT_TC(LPUART1);
+
+    sLogTx_DMABusy = true;
+  }
+
+  void LogDMA_UART_IRQHandler() {
+    if (!LL_LPUART_IsActiveFlag_TC(LPUART1)) {
+      return; // not us.
+    }
+
+    LL_LPUART_DisableIT_TC(LPUART1);
+
+    // DMA finished, disable the channel.
+    LL_DMA_DisableChannel(DMA_TARGET);
+    LL_DMA_ClearFlag_TC3(DMA1);
+    sLogTx_DMABusy = false;
+
+    // See if we got anything else to transmit in the interim.
+    LogDMA_StartTx();
+  }
 
   void logprintf(const char* fmt, ...) {
     va_list v;
@@ -29,11 +91,13 @@ extern "C" {
       sLogWritePtr += res;
     }
 
-    uint32_t dmaLength = (res > remaining) ? remaining : res;
-    HAL_UART_Transmit(&hlpuart1, (const uint8_t*) start, dmaLength, 0xffffffff);
+    if (!sLogTx_DMABusy) {
+      LogDMA_StartTx();
+    }
+
     portEXIT_CRITICAL();
   }
-
+#if 0
   void log_append(const char* data, size_t length) {
     if (!length)
       return;
@@ -71,6 +135,7 @@ extern "C" {
       HAL_UART_Transmit_DMA(&hlpuart1, (const uint8_t*) sLogBuffer, length);
     }
   }
+  #endif
 
   void log_read(const char** outChunk1, size_t* outChunk1Length, const char** outChunk2, size_t* outChunk2Length) {
     portENTER_CRITICAL();

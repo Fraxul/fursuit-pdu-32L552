@@ -61,8 +61,6 @@ int _write(int file, char *data, int len) {
     return -1;
   }
 
-  log_append(data, len);
-
   while (len) {
     // xStreamBufferSend seems to deadlock if we try and send a single datum that's larger than the stream.
     // We instead break writes into 64 byte chunks; that's how big the USB_Tx task's recv buffer is, anyway.

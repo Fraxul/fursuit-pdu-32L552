@@ -6,6 +6,7 @@
 extern "C" {
 #endif
 
+void LogDMA_UART_IRQHandler();
 
 void logprintf(const char* fmt, ...);
 void log_append(const char*, size_t);
