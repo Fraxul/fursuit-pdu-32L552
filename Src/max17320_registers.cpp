@@ -1,6 +1,6 @@
 #include "max17320_registers.h"
 
-// Automatically generated from MAX17320_Config.INI on Sat May  6 17:04:48 2023
+// Automatically generated from MAX17320_Config.INI on Sat May  6 18:22:06 2023
 
 const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x180, .value = 0x00 }, // nXTable0 Register

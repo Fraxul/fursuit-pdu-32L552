@@ -4,6 +4,7 @@ from datetime import datetime
 inputFilename = "MAX17320_Config.INI"
 header = f"// Automatically generated from {inputFilename} on {datetime.now().ctime()}"
 registerCount = 0
+nRSense = 0
 
 with open("Src/max17320_registers.cpp", "w", encoding="utf-8") as cpp:
     cpp.write(f"""#include "max17320_registers.h"
@@ -22,8 +23,8 @@ const MAX17320_Register max17320_defaultConfig[] = {{
             reg = int(m.group(1), base=16)
             value = int(m.group(2), base=16)
             comment = str(m.group(3)).strip()
-
-
+            if (reg == 0x1cf):
+                nRSense = value
 
             # Skip registers that are reserved and should not be written to.
             if (reg == 0x1c0 or reg == 0x1c1 or reg == 0x1cb or reg == 0x1e4 or reg == 0x1e5):
@@ -46,5 +47,14 @@ struct MAX17320_Register {{
 }};
 
 static constexpr uint8_t max17320_defaultConfig_length = {registerCount};
+static constexpr uint16_t max17320_nRSense = {nRSense};
+
+// Convert value from register 0x1c to microamps using the sense resistor value
+// sense resistor is 10 microOhms per LSB
+// microamps = value *  (1.5625 / (nRSense * 0.00001))
+// for 5 mOhms: value * (1.5625 / 0.005 == 312.5)
+// sample register 0x1c value for 1 A current with 5 mOhm sense resistor: -3368
+
+static constexpr float max17320_current_conversion_factor_milliamps = {(156250.0 / float(nRSense)) / 1000.0};
 extern const MAX17320_Register max17320_defaultConfig[];
 """)

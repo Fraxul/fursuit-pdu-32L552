@@ -3,6 +3,7 @@
 #include "log.h"
 #include "smbus.h"
 #include "stm32_SMBUS_stack.h"
+#include "PowerManagement.h"
 #include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
 
 #include <FreeRTOS.h>
@@ -327,6 +328,7 @@ static const struct ush_file_descriptor cmd_files[] = {
     { .name = "ps",         .description = "list tasks",                  .help = NULL, .exec = ps_exec_callback, },
     { .name = "dmesg",      .description = "show logs",                   .help = NULL, .exec = dmesg_exec_callback, },
     { .name = "log",        .description = "write data to dmesg log",     .help = NULL, .exec = log_exec_callback, },
+    { .name = "pwr",        .description = "Power status",                .help = NULL, .exec = [](struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) { PM_Shell_DumpPowerStats(); }, },
     { .name = "smbus_read", .description = "SMBUS Read",                  .help = NULL, .exec = smbus_read_exec_callback, },
 };
 

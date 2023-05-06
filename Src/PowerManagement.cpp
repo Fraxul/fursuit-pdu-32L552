@@ -9,8 +9,16 @@
 #include "stm32_SMBUS_stack.h"
 #include "log.h"
 #include <stdlib.h>
+#include <string.h>
+#include <stdio.h>
 
 extern TaskHandle_t PowerManagementHandle;
+
+extern "C" {
+  struct InputPowerState_t inputPowerState;
+  struct SystemPowerState_t systemPowerState;
+}
+
 #define MP2760_ADDR 0x10
 
 #define MAX17320_BANK0 0x6C // addr 0x000 - 0x0ff via I2C access
@@ -147,8 +155,81 @@ bool MAX17320_InitDefaults() {
   return MAX17320_SetWriteProtect(true);
 }
 
+
+bool MAX17320_UpdateSystemPowerState() {
+  union {
+    uint16_t value;
+    int16_t value_signed;
+  };
+
+  if (!PM_SMBUS_ReadReg16(MAX17320_BANK0, 0x06 /*RepSOC*/, value))
+    return false;
+  systemPowerState.stateOfCharge_pct = (value >> 8); // 1/256% LSB
+
+  if (!PM_SMBUS_ReadReg16(MAX17320_BANK0, 0x05 /*RepCap*/, systemPowerState.remainingCapacity_mAH))
+    return false;
+
+  if (!PM_SMBUS_ReadReg16(MAX17320_BANK0, 0xdb /*PCKP*/, value))
+    return false;
+
+  // convert from 0.3125mV / LSB to millivolts
+  systemPowerState.batteryVoltage_mV = (static_cast<uint32_t>(value) * 3125U) / 10000UL;
+
+  if (!PM_SMBUS_ReadReg16(MAX17320_BANK0, 0x1c /*Current*/, value))
+    return false;
+
+  // Convert to mA using a precomputed conversion factor based on nRSense
+  systemPowerState.batteryCurrent_mA = static_cast<int16_t>(static_cast<float>(value_signed) * max17320_current_conversion_factor_milliamps);
+
+  if (!PM_SMBUS_ReadReg16(MAX17320_BANK0, 0x1b /*Temp*/, value))
+    return false;
+
+  // Temperature is signed, 1/256 degC per LSB.
+  // Don't care about the fractional part.
+  systemPowerState.batteryTemperature_degC = value_signed / 256;
+
+  systemPowerState.timeToEmpty_seconds = 0xffff;
+  systemPowerState.timeToFull_seconds = 0xffff;
+
+  // TTF / TTE registers are 5.625sec/LSB
+  if (systemPowerState.batteryCurrent_mA > 50) {
+    if (!PM_SMBUS_ReadReg16(MAX17320_BANK0, 0x20 /*TTF*/, value))
+      return false;
+    uint32_t ttf = (static_cast<uint32_t>(value) * 5625U) / 1000UL;
+    systemPowerState.timeToFull_seconds = (ttf >= 0xffffUL ? 0xffffU : ttf);
+  }
+
+  if (systemPowerState.batteryCurrent_mA < -50) {
+    if (!PM_SMBUS_ReadReg16(MAX17320_BANK0, 0x11 /*TTE*/, value))
+      return false;
+    uint32_t tte = (static_cast<uint32_t>(value) * 5625U) / 1000UL;
+    systemPowerState.timeToEmpty_seconds = (tte >= 0xffffUL ? 0xffffU : tte);
+  }
+
+  return true;
+}
+
+void PM_Shell_DumpPowerStats() {
+  printf("SoC: %u%% (%u mAh)\n", systemPowerState.stateOfCharge_pct, systemPowerState.remainingCapacity_mAH);
+  printf("%5u mV    %d mA    %d degC\n", systemPowerState.batteryVoltage_mV, systemPowerState.batteryCurrent_mA, systemPowerState.batteryTemperature_degC);
+  if (systemPowerState.timeToEmpty_seconds != 0xffff) {
+    uint16_t min = systemPowerState.timeToEmpty_seconds / 60;
+    uint16_t sec = systemPowerState.timeToEmpty_seconds - (min * 60);
+    printf("TTE: %u min %02u sec\n", min, sec);
+  }
+  if (systemPowerState.timeToFull_seconds != 0xffff) {
+    uint16_t min = systemPowerState.timeToFull_seconds / 60;
+    uint16_t sec = systemPowerState.timeToFull_seconds - (min * 60);
+    printf("TTF: %u min %02u sec\n", min, sec);
+  }
+}
+
+
 void Task_PowerManagement(void*) {
   logprintf("Task_PowerManagement: Start\n");
+
+  memset(&systemPowerState, 0, sizeof(systemPowerState));
+
   if (!MP2760_InitDefaults()) {
 
     logprintf("Task_PowerManagement: Could not initialize MP2760 charger!\n");
@@ -173,43 +254,48 @@ void Task_PowerManagement(void*) {
   logprintf("Task_PowerManagement: InitDefaults() done\n");
 
   while (true) {
+    // Always update system power state every tick.
+    MAX17320_UpdateSystemPowerState();
+
     uint32_t notificationValue = 0;
-    xTaskNotifyWait(0, 0, &notificationValue, portMAX_DELAY);
+    if (pdPASS == xTaskNotifyWait(0, 0, &notificationValue, pdMS_TO_TICKS(5000))) {
+      // Notification received -- update the charger.
 
-    logprintf("Task_PowerManagement: awoke. New settings: isReady=%u V = %lu - %lu mV, max %lu mA, max %lu mW\n",
-      inputPowerState.isReady, inputPowerState.minVoltage_mV, inputPowerState.maxVoltage_mV,
-      inputPowerState.maxCurrent_mA, inputPowerState.maxPower_mW);
+      logprintf("Task_PowerManagement: awoke. New settings: isReady=%u V = %lu - %lu mV, max %lu mA, max %lu mW\n",
+        inputPowerState.isReady, inputPowerState.minVoltage_mV, inputPowerState.maxVoltage_mV,
+        inputPowerState.maxCurrent_mA, inputPowerState.maxPower_mW);
 
-    if (inputPowerState.isReady) {
-      // Give VBus some time to settle, then check isReady again.
-      vTaskDelay(pdMS_TO_TICKS(1000));
-    }
-
-    if (inputPowerState.isReady == 0) {
-      MP2760_InitDefaults();
-
-      MP2760_SetPowerInputEnabled(false);
-      MP2760_SetInputCurrentLimit(500); // Return to the basic USB power limit
-      continue;
-    }
-
-    // Step up the current gradually. We also have a long delay initially between setting the input current
-    // limit and enabling the charger, since the current limit does not seem to take effect immediately.
-    // (trying to prevent our chargers from immediately tripping on surge overcurrent)
-    uint32_t currentLimitStep = inputPowerState.maxCurrent_mA / 5;
-    MP2760_SetInputCurrentLimit(currentLimitStep);
-    vTaskDelay(pdMS_TO_TICKS(1000));
-    MP2760_SetPowerInputEnabled(true);
-
-    for (int i = 2; i <= 5; ++i) {
-      if (inputPowerState.isReady == 0) {
-        MP2760_SetPowerInputEnabled(false);
-        MP2760_SetInputCurrentLimit(500);
-        break;
+      if (inputPowerState.isReady) {
+        // Give VBus some time to settle, then check isReady again.
+        vTaskDelay(pdMS_TO_TICKS(1000));
       }
 
-      MP2760_SetInputCurrentLimit(currentLimitStep * i);
+      if (inputPowerState.isReady == 0) {
+        MP2760_InitDefaults();
+
+        MP2760_SetPowerInputEnabled(false);
+        MP2760_SetInputCurrentLimit(500); // Return to the basic USB power limit
+        continue;
+      }
+
+      // Step up the current gradually. We also have a long delay initially between setting the input current
+      // limit and enabling the charger, since the current limit does not seem to take effect immediately.
+      // (trying to prevent our chargers from immediately tripping on surge overcurrent)
+      uint32_t currentLimitStep = inputPowerState.maxCurrent_mA / 5;
+      MP2760_SetInputCurrentLimit(currentLimitStep);
       vTaskDelay(pdMS_TO_TICKS(1000));
+      MP2760_SetPowerInputEnabled(true);
+
+      for (int i = 2; i <= 5; ++i) {
+        if (inputPowerState.isReady == 0) {
+          MP2760_SetPowerInputEnabled(false);
+          MP2760_SetInputCurrentLimit(500);
+          break;
+        }
+
+        MP2760_SetInputCurrentLimit(currentLimitStep * i);
+        vTaskDelay(pdMS_TO_TICKS(1000));
+      }
     }
   }
 }
