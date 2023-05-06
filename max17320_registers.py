@@ -22,6 +22,13 @@ const MAX17320_Register max17320_defaultConfig[] = {{
             reg = int(m.group(1), base=16)
             value = int(m.group(2), base=16)
             comment = str(m.group(3)).strip()
+
+
+
+            # Skip registers that are reserved and should not be written to.
+            if (reg == 0x1c0 or reg == 0x1c1 or reg == 0x1cb or reg == 0x1e4 or reg == 0x1e5):
+                continue
+
             cpp.write(f"  {{ .id = {reg:#02x}, .value = {value:#04x} }}, // {comment}\n")
             registerCount += 1
     cpp.write("};\n")

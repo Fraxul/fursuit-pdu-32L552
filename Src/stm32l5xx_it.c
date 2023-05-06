@@ -252,7 +252,16 @@ void I2C2_EV_IRQHandler(void)
   /* USER CODE END I2C2_EV_IRQn 0 */
   HAL_SMBUS_EV_IRQHandler(&hsmbus2);
   /* USER CODE BEGIN I2C2_EV_IRQn 1 */
-
+  uint32_t staleFlags = hsmbus2.Instance->ISR & (I2C_ISR_STOPF | I2C_ISR_ADDR | I2C_ISR_NACKF);
+  if (staleFlags) {
+    logprintf("I2C2: stale ISR flags 0x%04x\n", staleFlags);
+    if (staleFlags & I2C_ISR_STOPF)
+      hsmbus2.Instance->ICR = I2C_ICR_STOPCF;
+    if (staleFlags & I2C_ISR_ADDR)
+      hsmbus2.Instance->ICR = I2C_ICR_ADDRCF;
+    if (staleFlags & I2C_ISR_NACKF)
+      hsmbus2.Instance->ICR = I2C_ICR_NACKCF;
+  }
   /* USER CODE END I2C2_EV_IRQn 1 */
 }
 

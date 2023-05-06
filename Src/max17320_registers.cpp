@@ -1,6 +1,6 @@
 #include "max17320_registers.h"
 
-// Automatically generated from MAX17320_Config.INI on Sat May  6 04:39:14 2023
+// Automatically generated from MAX17320_Config.INI on Sat May  6 17:04:48 2023
 
 const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x180, .value = 0x00 }, // nXTable0 Register
@@ -67,8 +67,6 @@ const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x1bd, .value = 0x9d58 }, // nROMID1 Register
   { .id = 0x1be, .value = 0xe0 }, // nROMID2 Register
   { .id = 0x1bf, .value = 0xa100 }, // nROMID3 Register
-  { .id = 0x1c0, .value = 0x00 }, // nChgCtrl1 Register
-  { .id = 0x1c1, .value = 0x00 }, // nPReserved1 Register
   { .id = 0x1c2, .value = 0x2061 }, // nChgCfg0 Register
   { .id = 0x1c3, .value = 0xe1 }, // nChgCtrl0 Register
   { .id = 0x1c4, .value = 0x00 }, // nRGain Register
@@ -78,7 +76,6 @@ const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x1c8, .value = 0x4000 }, // nCGAIN Register
   { .id = 0x1c9, .value = 0x00 }, // nCGTempCo Register
   { .id = 0x1ca, .value = 0x71be }, // nThermCfg Register
-  { .id = 0x1cb, .value = 0x00 }, // nChgCfg1 Register
   { .id = 0x1cc, .value = 0x00 }, // nManfctrName Register
   { .id = 0x1cd, .value = 0x00 }, // nManfctrName1 Register
   { .id = 0x1ce, .value = 0x00 }, // nManfctrName2 Register
@@ -103,8 +100,6 @@ const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x1e1, .value = 0x00 }, // nScOcvLim Register
   { .id = 0x1e2, .value = 0x00 }, // nAgeFcCfg Register
   { .id = 0x1e3, .value = 0xa5b9 }, // nDesignVoltage Register
-  { .id = 0x1e4, .value = 0x00 }, // nVGain Register
-  { .id = 0x1e5, .value = 0x00 }, // nRFastVShdn Register
   { .id = 0x1e6, .value = 0x00 }, // nManfctrDate Register
   { .id = 0x1e7, .value = 0x00 }, // nFirstUsed Register
   { .id = 0x1e8, .value = 0x00 }, // nSerialNumber0 Register
