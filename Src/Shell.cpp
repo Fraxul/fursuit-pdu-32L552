@@ -229,7 +229,7 @@ static void smbus_read_exec_callback(struct ush_object* self, struct ush_file_de
       printf("%02x\n", responseBuf[0]);
       break;
     case 2:
-      printf("%04lx\n", *reinterpret_cast<uint16_t*>(responseBuf));
+      printf("%04x\n", *reinterpret_cast<uint16_t*>(responseBuf));
       break;
     case 4:
       printf("%08lx\n", *reinterpret_cast<uint32_t*>(responseBuf));

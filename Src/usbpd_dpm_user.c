@@ -40,6 +40,7 @@
 #include "PowerManagement.h"
 #include "FreeRTOS.h"
 #include "timers.h"
+#include <stdlib.h>
 
 /* USER CODE END Includes */
 
