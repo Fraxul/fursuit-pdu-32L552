@@ -51,8 +51,6 @@ extern "C"
 
 #define DEV_PSA
 
-#define ALERT
-
 #define DENSE_CMD_TABLE
 
 #define PMBUS13

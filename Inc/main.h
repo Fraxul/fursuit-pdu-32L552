@@ -43,7 +43,6 @@ extern "C" {
 
 #include "stm32l5xx_ll_exti.h"
 
-#include "stm32_config_stack.h"
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
 

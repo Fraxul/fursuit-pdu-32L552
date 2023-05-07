@@ -1,8 +1,8 @@
 #include "main.h"
 #include "Shell.h"
 #include "log.h"
-#include "smbus.h"
 #include "stm32_SMBUS_stack.h"
+#include "PM_SMBUS.h"
 #include "PowerManagement.h"
 #include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
 
@@ -176,28 +176,38 @@ static void set_exec_callback(struct ush_object* self, struct ush_file_descripto
 
 
 static void smbus_read_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
-  if (argc < 2) {
+  if (argc < 3) {
     // return predefined error message
-    printf("usage: %s address commandCode [readLength]\n", argv[0]);
+    printf("usage: %s bus address commandCode [readLengthBytes -- default 2]\n", argv[0]);
     return;
   }
 
-  MX_SMBUS_Error_Check(pcontext);
-
-  uint8_t* responseBuf = STACK_SMBUS_GetBuffer(pcontext);
-
-  uint8_t address = strtol(argv[1], nullptr, 0);
-  uint8_t commandCode = strtol(argv[2], nullptr, 0);
-  uint8_t readLength = 1;
-  if (argc >= 3) {
-    readLength = strtol(argv[3], nullptr, 0);
+  uint8_t bus = strtol(argv[1], nullptr, 0);
+  uint8_t address = strtol(argv[2], nullptr, 0);
+  uint8_t commandCode = strtol(argv[3], nullptr, 0);
+  uint8_t readLength = 2;
+  if (argc >= 4) {
+    readLength = strtol(argv[4], nullptr, 0);
     if (readLength != 1 && readLength != 2 && readLength != 4) {
-      readLength = 1;
+      readLength = 2;
     }
   }
 
-  printf("address = 0x%x commandCode=0x%x readLength=%u\n", address, commandCode, readLength);
+  SMBUS_StackHandleTypeDef* pcontext = nullptr;
+  switch (bus) {
+    default:
+      bus = 1; // reset to default bus 1 if the index was out of range
+    case 1:
+      pcontext = &ctx_smbus1;
+      break;
+    case 2:
+      pcontext = &ctx_smbus2;
+      break;
+  }
 
+  printf("bus = %u, address = 0x%x, commandCode=0x%x, readLength=%u\n", bus, address, commandCode, readLength);
+
+  uint8_t* responseBuf = STACK_SMBUS_GetBuffer(pcontext);
 
   st_command_t command;
   command.cmnd_code = commandCode;

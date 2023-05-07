@@ -83,6 +83,7 @@
 
 /* External variables --------------------------------------------------------*/
 extern PCD_HandleTypeDef hpcd_USB_FS;
+extern SMBUS_HandleTypeDef hsmbus1;
 extern SMBUS_HandleTypeDef hsmbus2;
 extern TIM_HandleTypeDef htim6;
 
@@ -243,6 +244,34 @@ void TIM6_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles I2C1 event interrupt / I2C1 wake-up interrupt through EXTI line 23.
+  */
+void I2C1_EV_IRQHandler(void)
+{
+  /* USER CODE BEGIN I2C1_EV_IRQn 0 */
+
+  /* USER CODE END I2C1_EV_IRQn 0 */
+  HAL_SMBUS_EV_IRQHandler(&hsmbus1);
+  /* USER CODE BEGIN I2C1_EV_IRQn 1 */
+
+  /* USER CODE END I2C1_EV_IRQn 1 */
+}
+
+/**
+  * @brief This function handles I2C1 error interrupt.
+  */
+void I2C1_ER_IRQHandler(void)
+{
+  /* USER CODE BEGIN I2C1_ER_IRQn 0 */
+
+  /* USER CODE END I2C1_ER_IRQn 0 */
+  HAL_SMBUS_ER_IRQHandler(&hsmbus1);
+  /* USER CODE BEGIN I2C1_ER_IRQn 1 */
+
+  /* USER CODE END I2C1_ER_IRQn 1 */
+}
+
+/**
   * @brief This function handles I2C2 event interrupt / I2C2 wake-up interrupt through EXTI line 24.
   */
 void I2C2_EV_IRQHandler(void)
@@ -252,16 +281,7 @@ void I2C2_EV_IRQHandler(void)
   /* USER CODE END I2C2_EV_IRQn 0 */
   HAL_SMBUS_EV_IRQHandler(&hsmbus2);
   /* USER CODE BEGIN I2C2_EV_IRQn 1 */
-  uint32_t staleFlags = hsmbus2.Instance->ISR & (I2C_ISR_STOPF | I2C_ISR_ADDR | I2C_ISR_NACKF);
-  if (staleFlags) {
-    logprintf("I2C2: stale ISR flags 0x%04x\n", staleFlags);
-    if (staleFlags & I2C_ISR_STOPF)
-      hsmbus2.Instance->ICR = I2C_ICR_STOPCF;
-    if (staleFlags & I2C_ISR_ADDR)
-      hsmbus2.Instance->ICR = I2C_ICR_ADDRCF;
-    if (staleFlags & I2C_ISR_NACKF)
-      hsmbus2.Instance->ICR = I2C_ICR_NACKCF;
-  }
+
   /* USER CODE END I2C2_EV_IRQn 1 */
 }
 
