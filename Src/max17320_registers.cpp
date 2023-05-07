@@ -1,6 +1,6 @@
 #include "max17320_registers.h"
 
-// Automatically generated from MAX17320_Config.INI on Sat May  6 18:22:06 2023
+// Automatically generated from MAX17320_Config.INI on Sat May  6 23:42:01 2023
 
 const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x180, .value = 0x00 }, // nXTable0 Register
@@ -67,7 +67,7 @@ const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x1bd, .value = 0x9d58 }, // nROMID1 Register
   { .id = 0x1be, .value = 0xe0 }, // nROMID2 Register
   { .id = 0x1bf, .value = 0xa100 }, // nROMID3 Register
-  { .id = 0x1c2, .value = 0x2061 }, // nChgCfg0 Register
+  { .id = 0x1c2, .value = 0x2079 }, // nChgCfg0 Register
   { .id = 0x1c3, .value = 0xe1 }, // nChgCtrl0 Register
   { .id = 0x1c4, .value = 0x00 }, // nRGain Register
   { .id = 0x1c5, .value = 0x00 }, // nPackResistance Register
@@ -95,7 +95,7 @@ const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x1dc, .value = 0xab3d }, // nDelayCfg Register
   { .id = 0x1dd, .value = 0xe6b }, // nODSCTh Register
   { .id = 0x1de, .value = 0x4355 }, // nODSCCfg Register
-  { .id = 0x1df, .value = 0xa0a9 }, // nProtCfg2 Register
+  { .id = 0x1df, .value = 0xa091 }, // nProtCfg2 Register
   { .id = 0x1e0, .value = 0x00 }, // nDPLimit Register
   { .id = 0x1e1, .value = 0x00 }, // nScOcvLim Register
   { .id = 0x1e2, .value = 0x00 }, // nAgeFcCfg Register

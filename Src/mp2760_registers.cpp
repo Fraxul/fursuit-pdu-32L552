@@ -1,6 +1,6 @@
 #include "mp2760_registers.h"
 
-// Automatically generated from MP2760GVT-XXXX.txt on Tue May  2 17:38:52 2023
+// Automatically generated from MP2760GVT-XXXX.txt on Sun May  7 03:53:49 2023
 
 const MP2760_Register mp2760_defaultConfig[] = {
   // REG05[9]:Watchdog Timer Setting when Input Absent=1-Enable
@@ -16,9 +16,9 @@ const MP2760_Register mp2760_defaultConfig[] = {
   // REG09[9:0]:SRC Output Voltage=4980
   { .id = 0x9, .value = 0xf9 },
   // REG0A[10:8]:Voltage Compensation Limit=0
-  // REG0A[13:11]:Battery Impedance=0
+  // REG0A[13:11]:Battery Impedance=100
   // REG0A[6:0]:SRC Ouput Current Limit=2000
-  { .id = 0xa, .value = 0x28 },
+  { .id = 0xa, .value = 0x1028 },
   // REG0B[10:9]:Battery Low Voltage Threshold=12
   // REG0B[11]:DC/DC Action when Battery Low Voltage=0-INT
   // REG0B[12]:Pre-charge Threshold=12
@@ -49,11 +49,11 @@ const MP2760_Register mp2760_defaultConfig[] = {
   // REG0F[11:8]:Trickle Charge Current=100
   // REG0F[14:12]:Thermal Loop Temperature Threshold=111-120?C
   // REG0F[15]:Thermal loop Enable=1-Enable
-  // REG0F[3:0]:Termination Current=200
+  // REG0F[3:0]:Termination Current=50
   // REG0F[7:4]:Pre-charge Current=400
-  { .id = 0xf, .value = 0xf244 },
+  { .id = 0xf, .value = 0xf241 },
   // REG10[10:9]:Battery Cell Count=4
-  // REG10[11]:Recharge Threshold=200
+  // REG10[11]:Recharge Threshold=100
   // REG10[12]:TS/IMON Pin Function=0-TS
   // REG10[13]:BGATE Force Off=0-Not force BGATE off
   // REG10[14]:ACGATE Force On=0-Not force ACGATE on
@@ -62,7 +62,7 @@ const MP2760_Register mp2760_defaultConfig[] = {
   // REG10[6]:ACGATE Driver Enable=1-Enable ACGAET
   // REG10[7]:Battery Current Sense Resistor=0-10mohm
   // REG10[8]:Input Current Sense Resistor=0-10mohm
-  { .id = 0x10, .value = 0xe7e },
+  { .id = 0x10, .value = 0x67e },
   // REG11[10]:Input Over Voltage Deglitch Time=0-100ns
   // REG11[12:11]:System UVP=00-75%;
   // REG11[14:13]:System OVP=11-110%

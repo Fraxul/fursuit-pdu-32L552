@@ -3,22 +3,22 @@
 0000	0	07	7	REG07	0037	55	
 0000	0	08	8	REG08	000A	10	
 0000	0	09	9	REG09	00F9	249	
-0000	0	0A	10	REG0A	0028	40	
+0000	0	0A	10	REG0A	1028	4136	
 0000	0	0B	11	REG0B	3080	12416	
 0000	0	0C	12	REG0C	3410	13328	
 0000	0	0D	13	REG0D	F399	62361	
 0000	0	0E	14	REG0E	0010	16	
-0000	0	0F	15	REG0F	F244	62020	
-0000	0	10	16	REG10	0E7E	3710	
+0000	0	0F	15	REG0F	F241	62017	
+0000	0	10	16	REG10	067E	1662	
 0000	0	11	17	REG11	60E8	24808	
 0000	0	12	18	REG12	3C73	15475	
 0000	0	14	20	REG14	1200	4608	
 0000	0	15	21	REG15	6900	26880	
-0000	0	16	22	REG16	8200	33280	
+0000	0	16	22	REG16	0000	0	
 0000	0	17	23	REG17	0000	0	
 0000	0	18	24	REG18	0000	0	
 0000	0	19	25	REG19	0000	0	
-0000	0	22	34	REG22	007F	127	
+0000	0	22	34	REG22	0000	0	
 0000	0	23	35	REG23	0000	0	
 0000	0	24	36	REG24	0000	0	
 0000	0	25	37	REG25	0000	0	
@@ -39,7 +39,7 @@ END
 **** Configuration file: MP2760GVT-XXXX	
 **** Package: FCQFN30 4 *5	
 **** Soft rev: 1.4.0.0 (Build: 2022-05-30 15:36:53)	
-**** Date: 05/02/2023	
+**** Date: 05/07/2023	
 **** 	
 **** 	
 ******************** Registers(Config) *************************	
@@ -53,7 +53,7 @@ END
 **** REG09[11]:SRC Output Voltage Offset=0	
 **** REG09[9:0]:SRC Output Voltage=4980	
 **** REG0A[10:8]:Voltage Compensation Limit=0	
-**** REG0A[13:11]:Battery Impedance=0	
+**** REG0A[13:11]:Battery Impedance=100	
 **** REG0A[6:0]:SRC Ouput Current Limit=2000	
 **** REG0B[10:9]:Battery Low Voltage Threshold=12	
 **** REG0B[11]:DC/DC Action when Battery Low Voltage=0-INT	
@@ -81,10 +81,10 @@ END
 **** REG0F[11:8]:Trickle Charge Current=100	
 **** REG0F[14:12]:Thermal Loop Temperature Threshold=111-120?C	
 **** REG0F[15]:Thermal loop Enable=1-Enable	
-**** REG0F[3:0]:Termination Current=200	
+**** REG0F[3:0]:Termination Current=50	
 **** REG0F[7:4]:Pre-charge Current=400	
 **** REG10[10:9]:Battery Cell Count=4	
-**** REG10[11]:Recharge Threshold=200	
+**** REG10[11]:Recharge Threshold=100	
 **** REG10[12]:TS/IMON Pin Function=0-TS	
 **** REG10[13]:BGATE Force Off=0-Not force BGATE off	
 **** REG10[14]:ACGATE Force On=0-Not force ACGATE on	
