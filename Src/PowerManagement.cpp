@@ -155,6 +155,34 @@ bool MAX17320_InitDefaults() {
   return MAX17320_SetWriteProtect(true);
 }
 
+bool MP2760_UpdateSystemPowerState() {
+  union {
+    uint16_t value;
+    int16_t value_signed;
+  };
+
+  // REG23, ADC Input Voltage
+  if (!PM_SMBUS_ReadReg16(MP2760_ADDR, 0x23, value))
+    return false;
+  systemPowerState.chargerPowerInput_mV = (value & 0x3ff) * 20; // 20 mV/LSB
+
+  // REG24, ADC Input Current
+  if (!PM_SMBUS_ReadReg16(MP2760_ADDR, 0x24, value))
+    return false;
+  systemPowerState.chargerPowerInput_mA = ((value & 0x3ffU) * 25U) >> 2; // 6.25 mA/LSB
+
+  // REG26, ADC System Voltage
+  if (!PM_SMBUS_ReadReg16(MP2760_ADDR, 0x26, value))
+    return false;
+  systemPowerState.systemVoltage = (value & 0x3ff) * 20; // 20 mV/LSB
+
+  // REG27, ADC Charge Current
+  if (!PM_SMBUS_ReadReg16(MP2760_ADDR, 0x27, value))
+    return false;
+  systemPowerState.chargeCurrent_mA = ((value & 0x3ffU) * 25U) >> 1; // 12.5 mA/LSB.
+
+  return true;
+}
 
 bool MAX17320_UpdateSystemPowerState() {
   union {
@@ -217,10 +245,19 @@ void PM_Shell_DumpPowerStats() {
     uint16_t sec = systemPowerState.timeToEmpty_seconds - (min * 60);
     printf("TTE: %u min %02u sec\n", min, sec);
   }
-  if (systemPowerState.timeToFull_seconds != 0xffff) {
-    uint16_t min = systemPowerState.timeToFull_seconds / 60;
-    uint16_t sec = systemPowerState.timeToFull_seconds - (min * 60);
-    printf("TTF: %u min %02u sec\n", min, sec);
+  if (inputPowerState.isReady) {
+    printf("PD: %u - %u mV, max %u mA, max %lu mW\n",
+      inputPowerState.minVoltage_mV, inputPowerState.maxVoltage_mV,
+      inputPowerState.maxCurrent_mA, inputPowerState.maxPower_mW);
+    printf("Charger: %u mV, %u mA in; %u mA out\n",
+      systemPowerState.chargerPowerInput_mV,
+      systemPowerState.chargerPowerInput_mA,
+      systemPowerState.chargeCurrent_mA);
+    if (systemPowerState.timeToFull_seconds != 0xffff) {
+      uint16_t min = systemPowerState.timeToFull_seconds / 60;
+      uint16_t sec = systemPowerState.timeToFull_seconds - (min * 60);
+      printf("TTF: %u min %02u sec\n", min, sec);
+    }
   }
 }
 
@@ -256,6 +293,7 @@ void Task_PowerManagement(void*) {
   while (true) {
     // Always update system power state every tick.
     MAX17320_UpdateSystemPowerState();
+    MP2760_UpdateSystemPowerState();
 
     uint32_t notificationValue = 0;
     if (pdPASS == xTaskNotifyWait(0, 0, &notificationValue, pdMS_TO_TICKS(5000))) {

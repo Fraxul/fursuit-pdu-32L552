@@ -6,15 +6,19 @@ extern "C" {
 #endif
 
 struct InputPowerState_t {
-  uint32_t minVoltage_mV;
-  uint32_t maxVoltage_mV;
-  uint32_t maxCurrent_mA;
+  uint16_t minVoltage_mV;
+  uint16_t maxVoltage_mV;
   uint32_t maxPower_mW;
-
+  uint16_t maxCurrent_mA;
   uint8_t isReady;
 };
 
 struct SystemPowerState_t {
+
+  // System info (from MP2760 charger)
+  uint16_t systemVoltage;
+
+
   // Battery info
   uint8_t stateOfCharge_pct; // percentage
   uint16_t remainingCapacity_mAH; // milliamp-hours
@@ -24,6 +28,11 @@ struct SystemPowerState_t {
 
   uint16_t timeToEmpty_seconds; // valid only when discharging
   uint16_t timeToFull_seconds; // valid only when charging
+
+  // Charger info
+  uint16_t chargerPowerInput_mV;
+  uint16_t chargerPowerInput_mA;
+  uint16_t chargeCurrent_mA;
 };
 
 

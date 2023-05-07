@@ -208,7 +208,7 @@ void MX_FREERTOS_Init(void) {
 #endif
 
   START_TASK(Shell, osPriorityNormal);
-  START_TASK(USB_Tx, osPriorityRealtime7);
+  START_TASK(USB_Tx, osPriorityHigh);
   START_TASK(PowerManagement, osPriorityNormal);
 
   /* USER CODE END RTOS_THREADS */
