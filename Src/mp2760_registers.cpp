@@ -1,10 +1,10 @@
 #include "mp2760_registers.h"
 
-// Automatically generated from MP2760GVT-XXXX.txt on Sun May  7 03:53:49 2023
+// Automatically generated from MP2760GVT-XXXX.txt on Sun May  7 22:09:51 2023
 
 const MP2760_Register mp2760_defaultConfig[] = {
-  // REG05[9]:Watchdog Timer Setting when Input Absent=1-Enable
-  { .id = 0x5, .value = 0x208 },
+  // REG05[9]:Watchdog Timer Setting when Input Absent=0-Disable
+  { .id = 0x5, .value = 0x08 },
   // REG06[7:0]:Input Minimum Voltage Limit=4560
   { .id = 0x6, .value = 0x39 },
   // REG07[6:0]:Minimum System Voltage Threshold=11000
@@ -71,7 +71,7 @@ const MP2760_Register mp2760_defaultConfig[] = {
   // REG11[7:6]:Input Over Voltage Threshold=22.4
   // REG11[9:8]:Input Under Voltage Threshold=3.2
   { .id = 0x11, .value = 0x60e8 },
-  // REG12[0]:Charge Enable=1-Charge Enable
+  // REG12[0]:Charge Enable=0-Charge Disable
   // REG12[1]:Input Current Limit Disable=1-IIN_LIM Enable
   // REG12[10]:Safety Timer Extension=1-Extend by 2X
   // REG12[12:11]:Safety Timer=20 hours
@@ -79,10 +79,10 @@ const MP2760_Register mp2760_defaultConfig[] = {
   // REG12[3]:SRC Mode Enable=0-Disable Discharge
   // REG12[4]:Charge Termination Enable=1-Enable
   // REG12[5]:BGATE Driver Enable=1-Enable BGATE driver block
-  // REG12[6]:DC/DC Enable=1-Enable
+  // REG12[6]:DC/DC Enable=0-Disable
   // REG12[8:7]:Watchdog Timer=00-Disable Timer
   // REG12[9]:Watchdog Feed Bit=0-Normal
-  { .id = 0x12, .value = 0x3c73 },
+  { .id = 0x12, .value = 0x3c32 },
   // REG14[13:6]:Fast Charge Current=3600
   { .id = 0x14, .value = 0x1200 },
   // REG15[14:4]:Battery Full Voltage=16800

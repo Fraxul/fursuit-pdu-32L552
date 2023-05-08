@@ -291,6 +291,8 @@ void Task_PowerManagement(void*) {
 
   logprintf("Task_PowerManagement: InitDefaults() done\n");
 
+  bool inputPowerWasPreviouslyOn = false;
+
   while (true) {
     // Always update system power state every tick.
     MAX17320_UpdateSystemPowerState();
@@ -310,11 +312,22 @@ void Task_PowerManagement(void*) {
       }
 
       if (inputPowerState.isReady == 0) {
+        inputPowerWasPreviouslyOn = false;
         MP2760_InitDefaults();
 
         MP2760_SetPowerInputEnabled(false);
         MP2760_SetInputCurrentLimit(500); // Return to the basic USB power limit
         continue;
+      }
+
+      if (!inputPowerWasPreviouslyOn) {
+        // Safety check: Always reload the MP2760 config registers when transitioning
+        // from no input power to charging mode.
+        // (This is mostly useful on the bench when running the STM32 from an
+        // external supply -- an undervolt will power-off the MP2760 and reset it to
+        // defaults, but not reset the STM32.)
+        MP2760_InitDefaults();
+        inputPowerWasPreviouslyOn = true;
       }
 
       // Step up the current gradually. We also have a long delay initially between setting the input current

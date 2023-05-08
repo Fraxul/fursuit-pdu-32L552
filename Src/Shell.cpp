@@ -54,6 +54,26 @@ static const struct ush_descriptor ush_desc = {
   .hostname = const_cast<char*>("stm32"),    // hostname (in prompt)
 };
 
+
+const char* nibbleTable[] = {
+  "0000",
+  "0001",
+  "0010",
+  "0011",
+  "0100",
+  "0101",
+  "0110",
+  "0111",
+  "1000",
+  "1001",
+  "1010",
+  "1011",
+  "1100",
+  "1101",
+  "1110",
+  "1111"
+};
+
 // reboot cmd file execute callback
 static void reboot_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
   NVIC_SystemReset();
@@ -177,7 +197,7 @@ static void set_exec_callback(struct ush_object* self, struct ush_file_descripto
 static void smbus_read_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
   if (argc < 3) {
     // return predefined error message
-    printf("usage: %s bus address commandCode\n", argv[0]);
+    printf("usage: %s bus deviceAddress registerAddress\n", argv[0]);
     return;
   }
 
@@ -204,7 +224,42 @@ static void smbus_read_exec_callback(struct ush_object* self, struct ush_file_de
     return;
   }
 
-  printf("%04x hex || %d dec\n", outValue, outValue);
+  printf("%04x hex || %d dec || %s %s %s %s\n", outValue, outValue,
+    nibbleTable[(outValue & 0xf000) >> 12],
+    nibbleTable[(outValue & 0xf00) >> 8],
+    nibbleTable[(outValue & 0xf0) >> 4],
+    nibbleTable[(outValue & 0xf)]);
+}
+
+
+static void smbus_write16_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
+  if (argc < 4) {
+    printf("usage: %s bus deviceAddress registerAddress value\n", argv[0]);
+    return;
+  }
+
+  uint8_t bus = strtol(argv[1], nullptr, 0);
+  uint8_t deviceAddress = strtol(argv[2], nullptr, 0);
+  uint8_t regAddress = strtol(argv[3], nullptr, 0);
+  uint16_t value = strtol(argv[4], nullptr, 0);
+
+  SMBUS_HandleTypeDef* pCtx = nullptr;
+  switch (bus) {
+    default:
+      bus = 1; // reset to default bus 1 if the index was out of range
+    case 1:
+      pCtx = &hsmbus1;
+      break;
+    case 3:
+      pCtx = &hsmbus3;
+      break;
+  }
+
+  printf("bus = %u, deviceAddress = 0x%x, regAddress = 0x%x, value = 0x%x\n", bus, deviceAddress, regAddress, value);
+  if (!PM_SMBUS_WriteReg16(pCtx, deviceAddress, regAddress, value)) {
+    printf("PM_SMBUS_WriteReg16() failed\n");
+    return;
+  }
 }
 
 // led file get data callback
@@ -293,12 +348,13 @@ static const struct ush_file_descriptor dev_files[] = {
 
 // cmd files descriptor
 static const struct ush_file_descriptor cmd_files[] = {
-    { .name = "reboot",     .description = "reboot device",               .help = NULL, .exec = reboot_exec_callback, },
-    { .name = "ps",         .description = "list tasks",                  .help = NULL, .exec = ps_exec_callback, },
-    { .name = "dmesg",      .description = "show logs",                   .help = NULL, .exec = dmesg_exec_callback, },
-    { .name = "log",        .description = "write data to dmesg log",     .help = NULL, .exec = log_exec_callback, },
-    { .name = "pwr",        .description = "Power status",                .help = NULL, .exec = [](struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) { PM_Shell_DumpPowerStats(); }, },
-    { .name = "smbus_read", .description = "SMBUS Read",                  .help = NULL, .exec = smbus_read_exec_callback, },
+    { .name = "reboot",      .description = "reboot device",               .help = NULL, .exec = reboot_exec_callback, },
+    { .name = "ps",          .description = "list tasks",                  .help = NULL, .exec = ps_exec_callback, },
+    { .name = "dmesg",       .description = "show logs",                   .help = NULL, .exec = dmesg_exec_callback, },
+    { .name = "log",         .description = "write data to dmesg log",     .help = NULL, .exec = log_exec_callback, },
+    { .name = "pwr",         .description = "Power status",                .help = NULL, .exec = [](struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) { PM_Shell_DumpPowerStats(); }, },
+    { .name = "smbus_read",  .description = "SMBUS Read",                  .help = NULL, .exec = smbus_read_exec_callback, },
+    { .name = "smbus_write", .description = "SMBUS Write",                 .help = NULL, .exec = smbus_write16_exec_callback, },
 };
 
 // root directory handler
