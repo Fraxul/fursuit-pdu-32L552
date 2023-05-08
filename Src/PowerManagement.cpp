@@ -6,7 +6,6 @@
 #include "mp2760_registers.h"
 #include "max17320_registers.h"
 #include "i2c.h"
-#include "stm32_SMBUS_stack.h"
 #include "log.h"
 #include <stdlib.h>
 #include <string.h>
@@ -24,8 +23,8 @@ extern "C" {
 #define MAX17320_BANK0 0x6C // addr 0x000 - 0x0ff via I2C access
 #define MAX17320_BANK1 0x16 // addr 0x100 - 0x17f via SMBus access (SBS protocol); addr 0x180 - 0x1ff via I2C access (NV memory bank)
 
-#define MAX17320_pCTX &ctx_smbus1
-#define MP2760_pCTX &ctx_smbus2
+#define MAX17320_pCTX &hsmbus1
+#define MP2760_pCTX &hsmbus3
 
 void PM_DisconnectPower() {
   inputPowerState.isReady = 0;
@@ -41,7 +40,7 @@ void PM_DisconnectPower() {
 }
 
 void PM_NotifyInputPowerStateUpdated() {
-  xTaskNotify(PowerManagementHandle, 0, eSetValueWithOverwrite);
+  xTaskNotify(PowerManagementHandle, 0x8000, eSetBits);
 }
 
 bool MP2760_SetPowerInputEnabled(bool enabled) {
@@ -269,9 +268,6 @@ void Task_PowerManagement(void*) {
   logprintf("Task_PowerManagement: Start\n");
   memset(&systemPowerState, 0, sizeof(systemPowerState));
 
-  PM_Init_SMBUS_Context(&ctx_smbus1, &hsmbus1);
-  PM_Init_SMBUS_Context(&ctx_smbus2, &hsmbus2);
-
   if (!MP2760_InitDefaults()) {
 
     logprintf("Task_PowerManagement: Could not initialize MP2760 charger!\n");
@@ -301,7 +297,7 @@ void Task_PowerManagement(void*) {
     MP2760_UpdateSystemPowerState();
 
     uint32_t notificationValue = 0;
-    if (pdPASS == xTaskNotifyWait(0, 0, &notificationValue, pdMS_TO_TICKS(5000))) {
+    if (pdPASS == xTaskNotifyWait(0, 0x8000, &notificationValue, pdMS_TO_TICKS(5000)) && (notificationValue & 0x8000)) {
       // Notification received -- update the charger.
 
       logprintf("Task_PowerManagement: awoke. New settings: isReady=%u V = %lu - %lu mV, max %lu mA, max %lu mW\n",

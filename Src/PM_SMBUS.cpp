@@ -2,131 +2,170 @@
 
 #include <FreeRTOS.h>
 #include <task.h>
-#include "stm32_SMBUS_stack.h"
-#include "stm32_PMBUS_stack.h"
 #include "i2c.h"
 #include "log.h"
 #include <stdlib.h>
 
-SMBUS_StackHandleTypeDef ctx_smbus1;
-SMBUS_StackHandleTypeDef ctx_smbus2;
+#include <FreeRTOS.h>
+#include "task.h"
+#include "i2c.h"
+#include <limits.h>
 
-void PM_Init_SMBUS_Context(SMBUS_StackHandleTypeDef* ctx, SMBUS_HandleTypeDef* hsmbus) {
-  ctx->CMD_table = (st_command_t*)&PMBUS_COMMANDS_TAB[0];
-  ctx->CMD_tableSize = PMBUS_COMMANDS_TAB_SIZE;
-  ctx->Device = hsmbus;
-  ctx->SRByte = 0x55U;
-  ctx->CurrentCommand = NULL;
-
-  /* In SMBUS 10-bit addressing is reserved for future use */
-  assert_param(hsmbus->Init.AddressingMode == SMBUS_ADDRESSINGMODE_7BIT);
-  ctx->OwnAddress = hsmbus->Init.OwnAddress1;
-
-  /* Address resolved state */
-  ctx->StateMachine = SMBUS_SMS_ARP_AR;
-
-  /* checking the HAL host setting */
-  assert_param(hsmbus->Init.PeripheralMode == SMBUS_PERIPHERAL_MODE_SMBUS_HOST);
-
-  /* checking the HAL is in accord */
-  assert_param(hsmbus->Init.PacketErrorCheckMode == SMBUS_PEC_DISABLE);
+#define TRANSACTION_TIMEOUT_ms 100
+#define SMBUS_NOTIFICATION_ERROR 0b001
+#define SMBUS_NOTIFICATION_TX_COMPLETE 0b010
+#define SMBUS_NOTIFICATION_RX_COMPLETE 0b100
+#define SMBUS_NOTIFICATION_MASK 0b111
 
 
-  if (STACK_SMBUS_Init(ctx) != HAL_OK) {
-    logprintf("PM_Init_SMBUS_Context(%p, %p) failed!\n", ctx, hsmbus);
-    Error_Handler();
+
+static volatile TaskHandle_t smbus1Task = nullptr, smbus3Task = nullptr;
+
+volatile TaskHandle_t* taskHandleForSMBUSCtx(SMBUS_HandleTypeDef* hsmbus) {
+  if (hsmbus == &hsmbus1) {
+    return &smbus1Task;
+  } else if (hsmbus == &hsmbus3) {
+    return &smbus3Task;
   }
+
+  Error_Handler();
+  return nullptr;
 }
 
-bool PM_SMBUS_WriteReg16(SMBUS_StackHandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t regAddr, uint16_t regValue) {
-  MX_SMBUS_Error_Check(pCtx);
+// HAL callback interfaces for interrupt mode
 
-  uint8_t* buf = STACK_SMBUS_GetBuffer(pCtx);
-  st_command_t command;
-  command.cmnd_code = regAddr;
-  command.cmnd_query = WRITE;
-  command.cmnd_master_Tx_size = 3;
-  command.cmnd_master_Rx_size = 0;
-  *(reinterpret_cast<uint16_t*>(buf)) = regValue;
+void WakeTaskForSMBUSInterrupt(SMBUS_HandleTypeDef* hsmbus, uint32_t notificationValue) {
+  TaskHandle_t targetTask = *taskHandleForSMBUSCtx(hsmbus);
 
-  HAL_StatusTypeDef st = STACK_SMBUS_HostCommand(pCtx, &command, deviceAddr, WRITE);
+  if (targetTask == nullptr) {
+    logprintf("WakeTaskForSMBUSInterrupt(): no task waiting for %p value %lu\n", hsmbus, notificationValue);
+    return;
+  }
+  xTaskAbortDelay(targetTask);
+/*
+  BaseType_t xHigherPriorityTaskWoken = pdFALSE;
+  uint32_t previousNotificationValue;
+  xTaskGenericNotifyFromISR(targetTask, notificationValue, eSetBits, &previousNotificationValue, &xHigherPriorityTaskWoken);
+  portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+*/
+}
+
+extern "C" void HAL_SMBUS_MasterTxCpltCallback(SMBUS_HandleTypeDef * hsmbus) {
+  WakeTaskForSMBUSInterrupt(hsmbus, SMBUS_NOTIFICATION_TX_COMPLETE);
+}
+
+extern "C" void HAL_SMBUS_MasterRxCpltCallback(SMBUS_HandleTypeDef * hsmbus) {
+  WakeTaskForSMBUSInterrupt(hsmbus, SMBUS_NOTIFICATION_RX_COMPLETE);
+}
+
+extern "C" void HAL_SMBUS_ErrorCallback(SMBUS_HandleTypeDef * hsmbus) {
+  WakeTaskForSMBUSInterrupt(hsmbus, SMBUS_NOTIFICATION_ERROR);
+}
+
+bool PM_SMBUS_WaitForReady(SMBUS_HandleTypeDef* pCtx) {
+  int i = 1000;
+  while (i--) {
+    if (HAL_SMBUS_GetState(pCtx) & HAL_SMBUS_STATE_BUSY)
+      vTaskDelay(2);
+  }
+  if (!i)
+    return false;
+
+  return (HAL_SMBUS_GetState(pCtx) == HAL_SMBUS_STATE_READY);
+}
+
+bool PM_SMBUS_AttemptRecovery(SMBUS_HandleTypeDef* pCtx) {
+  vTaskDelay(100);
+
+  pCtx->State = HAL_SMBUS_STATE_READY;
+  pCtx->Lock = HAL_UNLOCKED;
+
+  HAL_SMBUS_Master_Abort_IT(pCtx, /* dummy address=*/ 2);
+
+  if (PM_SMBUS_WaitForReady(pCtx)) {
+    logprintf("PM_SMBUS_AttemptRecovery(): OK\n");
+  } else {
+    logprintf("PM_SMBUS_AttemptRecovery(): Failed (state = %x)\n", pCtx->State);
+  }
+
+  pCtx->State = HAL_SMBUS_STATE_READY;
+  pCtx->Lock = HAL_UNLOCKED;
+
+  return false; // Used for return chaining.
+}
+
+bool PM_SMBUS_WriteReg16(SMBUS_HandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t regAddr, uint16_t regValue) {
+  if (!PM_SMBUS_WaitForReady(pCtx)) {
+    logprintf("PM_SMBUS_WriteReg16(%p, %x, %x, %x): Device not ready -- state = %x (before start)\n", pCtx->Instance, deviceAddr, regAddr, regValue, HAL_SMBUS_GetState(pCtx));
+    return PM_SMBUS_AttemptRecovery(pCtx);
+  }
+
+  *taskHandleForSMBUSCtx(pCtx) = xTaskGetCurrentTaskHandle();
+
+  uint8_t data[] = {regAddr, (uint8_t) (regValue & 0xffU), (uint8_t) ((regValue & 0xff00U) >> 8)};
+  HAL_StatusTypeDef st = HAL_SMBUS_Master_Transmit_IT(pCtx, deviceAddr, data, sizeof(data), SMBUS_FIRST_AND_LAST_FRAME_NO_PEC);
   if (st != HAL_OK) {
-    logprintf("MP2760_WriteReg16(%x, %x, %x): Bad HAL response %u from STACK_SMBUS_HostCommand\n", deviceAddr, regAddr, regValue, st);
-    return false;
+    logprintf("PM_SMBUS_WriteReg16(%p, %x, %x, %x): Bad HAL response %u from HAL_SMBUS_Master_Transmit_IT\n", pCtx->Instance, deviceAddr, regAddr, regValue, st);
+    return PM_SMBUS_AttemptRecovery(pCtx);
   }
 
-  for (int i = 0; i < 100; ++i) {
-    if (STACK_SMBUS_IsReady(pCtx) == SMBUS_SMS_READY)
-      break;
-    vTaskDelay(pdMS_TO_TICKS(1));
-  }
-
-  if (STACK_SMBUS_IsReady(pCtx) != SMBUS_SMS_READY) {
-    logprintf("PM_SMBUS_WriteReg16(%x, %x, %x): SMBUS stack did not become ready after finishing busy. state = 0x%lx\n", deviceAddr, regAddr, regValue, pCtx->StateMachine);
-    return false;
+  if (!PM_SMBUS_WaitForReady(pCtx)) {
+    logprintf("PM_SMBUS_WriteReg16(%p, %x, %x, %x): Timed out waiting for device to become ready after write (state = %x)\n",
+      pCtx->Instance, deviceAddr, regAddr, regValue, HAL_SMBUS_GetState(pCtx));
+    return PM_SMBUS_AttemptRecovery(pCtx);
   }
 
   return true;
 }
 
+bool PM_SMBUS_ReadReg16(SMBUS_HandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t regAddr, uint16_t& outValue) {
 
-bool PM_SMBUS_ReadReg16(SMBUS_StackHandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t regAddr, uint16_t& outValue) {
-  MX_SMBUS_Error_Check(pCtx);
+  if (!PM_SMBUS_WaitForReady(pCtx)) {
+    logprintf("PM_SMBUS_ReadReg16(%p, %x, %x): Device not ready -- state = %x (before start)\n", pCtx->Instance, deviceAddr, regAddr, HAL_SMBUS_GetState(pCtx));
+    return PM_SMBUS_AttemptRecovery(pCtx);
+  }
 
-  uint8_t* buf = STACK_SMBUS_GetBuffer(pCtx);
-  st_command_t command;
-  command.cmnd_code = regAddr;
-  command.cmnd_query = READ;
-  command.cmnd_master_Tx_size = 1;
-  command.cmnd_master_Rx_size = 2;
+  *taskHandleForSMBUSCtx(pCtx) = xTaskGetCurrentTaskHandle();
 
-  HAL_StatusTypeDef st = STACK_SMBUS_HostCommand(pCtx, &command, deviceAddr, READ);
+  HAL_StatusTypeDef st;
+
+  uint8_t txData[] = { regAddr };
+  st = HAL_SMBUS_Master_Transmit_IT(pCtx, deviceAddr, txData, sizeof(txData), SMBUS_FIRST_FRAME);
   if (st != HAL_OK) {
-    logprintf("PM_SMBUS_ReadReg16(%x, %x): Bad HAL response %u from STACK_SMBUS_HostCommand\n", deviceAddr, regAddr, st);
-    return false;
+    logprintf("PM_SMBUS_ReadReg16(%p, %x, %x): Bad HAL response %x from HAL_SMBUS_Master_Transmit_IT\n",
+      pCtx->Instance, deviceAddr, regAddr, st);
+    return PM_SMBUS_AttemptRecovery(pCtx);
+  }
+#if 1
+  if (!PM_SMBUS_WaitForReady(pCtx)) {
+    logprintf("PM_SMBUS_ReadReg16(%p, %x, %x): Timed out with state %x waiting for device to become ready after write\n",
+      pCtx->Instance, deviceAddr, regAddr, HAL_SMBUS_GetState(pCtx));
+    return PM_SMBUS_AttemptRecovery(pCtx);
+  }
+#else
+  while (HAL_SMBUS_GetState(pCtx) != HAL_SMBUS_STATE_READY) {}
+#endif
+
+  st = HAL_SMBUS_Master_Receive_IT(pCtx, deviceAddr | 1, (uint8_t*) &outValue, sizeof(outValue), SMBUS_LAST_FRAME_NO_PEC);
+  if (st != HAL_OK) {
+    logprintf("PM_SMBUS_ReadReg16(%p, %x, %x): Bad HAL response %x from HAL_SMBUS_Master_Receive_IT\n", pCtx->Instance, deviceAddr, regAddr, st);
+    return PM_SMBUS_AttemptRecovery(pCtx);
   }
 
-  for (int i = 0; i < 100; ++i) {
-    if (STACK_SMBUS_IsReady(pCtx) == SMBUS_SMS_READY)
-      break;
-    vTaskDelay(pdMS_TO_TICKS(1));
+  if (!PM_SMBUS_WaitForReady(pCtx)) {
+    logprintf("PM_SMBUS_ReadReg16(%p, %x, %x): Timed out with state %x waiting for device to become ready after read\n",
+      pCtx->Instance, deviceAddr, regAddr, HAL_SMBUS_GetState(pCtx));
+    return PM_SMBUS_AttemptRecovery(pCtx);
   }
 
-  if (STACK_SMBUS_IsReady(pCtx) != SMBUS_SMS_READY) {
-    logprintf("PM_SMBUS_ReadReg16(%x, %x): SMBUS stack did not become ready after finishing busy. state = 0x%lx\n", deviceAddr, regAddr, pCtx->StateMachine);
-    return false;
-  }
-
-  outValue = *reinterpret_cast<uint16_t*>(buf);
   return true;
 }
 
-bool PM_SMBUS_RMWReg16(SMBUS_StackHandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t regAddr, uint16_t bitMask, uint16_t bitsToSet) {
+bool PM_SMBUS_RMWReg16(SMBUS_HandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t regAddr, uint16_t bitMask, uint16_t bitsToSet) {
   uint16_t value = 0;
   if (!PM_SMBUS_ReadReg16(pCtx, deviceAddr, regAddr, value))
     return false;
   value &= bitMask;
   value |= bitsToSet;
   return PM_SMBUS_WriteReg16(pCtx, deviceAddr, regAddr, value);
-}
-
-
-/**
-  * @brief  Stub of an error treatment function - set to ignore most errors.
-            Defined "weak" for suggested replacement.
-  * @param  pStackContext : Pointer to a SMBUS_StackHandleTypeDef structure that contains
-  *                the configuration information for the specified SMBUS.
-  * @retval None
-  */
-void MX_SMBUS_Error_Check(SMBUS_StackHandleTypeDef* pStackContext) {
-  if ((STACK_SMBUS_IsBlockingError(pStackContext)) || (STACK_SMBUS_IsCmdError(pStackContext))) {
-    /* No action, error symptoms are ignored */
-    pStackContext->StateMachine &= ~(SMBUS_ERROR_CRITICAL | SMBUS_COM_ERROR);
-  } else if ((pStackContext->StateMachine & SMBUS_SMS_ERR_PECERR) ==
-           SMBUS_SMS_ERR_PECERR) /* PEC error, we won't wait for any more action */
-  {
-    pStackContext->StateMachine |= SMBUS_SMS_READY;
-    pStackContext->CurrentCommand = NULL;
-    pStackContext->StateMachine &= ~(SMBUS_SMS_ACTIVE_MASK | SMBUS_SMS_ERR_PECERR);
-  }
 }

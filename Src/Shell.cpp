@@ -1,7 +1,6 @@
 #include "main.h"
 #include "Shell.h"
 #include "log.h"
-#include "stm32_SMBUS_stack.h"
 #include "PM_SMBUS.h"
 #include "PowerManagement.h"
 #include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
@@ -178,74 +177,34 @@ static void set_exec_callback(struct ush_object* self, struct ush_file_descripto
 static void smbus_read_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
   if (argc < 3) {
     // return predefined error message
-    printf("usage: %s bus address commandCode [readLengthBytes -- default 2]\n", argv[0]);
+    printf("usage: %s bus address commandCode\n", argv[0]);
     return;
   }
 
   uint8_t bus = strtol(argv[1], nullptr, 0);
-  uint8_t address = strtol(argv[2], nullptr, 0);
-  uint8_t commandCode = strtol(argv[3], nullptr, 0);
-  uint8_t readLength = 2;
-  if (argc >= 4) {
-    readLength = strtol(argv[4], nullptr, 0);
-    if (readLength != 1 && readLength != 2 && readLength != 4) {
-      readLength = 2;
-    }
-  }
+  uint8_t deviceAddress = strtol(argv[2], nullptr, 0);
+  uint8_t regAddress = strtol(argv[3], nullptr, 0);
 
-  SMBUS_StackHandleTypeDef* pcontext = nullptr;
+  SMBUS_HandleTypeDef* pCtx = nullptr;
   switch (bus) {
     default:
       bus = 1; // reset to default bus 1 if the index was out of range
     case 1:
-      pcontext = &ctx_smbus1;
+      pCtx = &hsmbus1;
       break;
-    case 2:
-      pcontext = &ctx_smbus2;
+    case 3:
+      pCtx = &hsmbus3;
       break;
   }
 
-  printf("bus = %u, address = 0x%x, commandCode=0x%x, readLength=%u\n", bus, address, commandCode, readLength);
-
-  uint8_t* responseBuf = STACK_SMBUS_GetBuffer(pcontext);
-
-  st_command_t command;
-  command.cmnd_code = commandCode;
-  command.cmnd_query = READ;
-  command.cmnd_master_Tx_size = 1;
-  command.cmnd_master_Rx_size = readLength;
-
-  HAL_StatusTypeDef st = STACK_SMBUS_HostCommand(pcontext, &command, address, READ);
-  if (st != HAL_OK) {
-    printf("Bad HAL response %u from STACK_SMBUS_HostCommand\n", st);
+  printf("bus = %u, deviceAddress = 0x%x, regAddress = 0x%x\n", bus, deviceAddress, regAddress);
+  uint16_t outValue = 0;
+  if (!PM_SMBUS_ReadReg16(pCtx, deviceAddress, regAddress, outValue)) {
+    printf("PM_SMBUS_ReadReg16() failed\n");
     return;
   }
 
-
-  for (int i = 0; i < 100; ++i) {
-    if (STACK_SMBUS_IsReady(pcontext) == SMBUS_SMS_READY)
-      break;
-    vTaskDelay(pdMS_TO_TICKS(1));
-  }
-
-  if (STACK_SMBUS_IsReady(pcontext) != SMBUS_SMS_READY) {
-    printf("SMBUS stack did not become ready after finishing busy. state = 0x%lx\n", pcontext->StateMachine);
-    return;
-  }
-
-
-  switch (readLength) {
-    default:
-    case 1:
-      printf("%02x\n", responseBuf[0]);
-      break;
-    case 2:
-      printf("%04x\n", *reinterpret_cast<uint16_t*>(responseBuf));
-      break;
-    case 4:
-      printf("%08lx\n", *reinterpret_cast<uint32_t*>(responseBuf));
-      break;
-  }
+  printf("%04x hex || %d dec\n", outValue, outValue);
 }
 
 // led file get data callback

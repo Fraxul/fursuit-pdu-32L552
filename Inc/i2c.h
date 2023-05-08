@@ -34,14 +34,14 @@ extern "C" {
 
 extern SMBUS_HandleTypeDef hsmbus1;
 
-extern SMBUS_HandleTypeDef hsmbus2;
+extern SMBUS_HandleTypeDef hsmbus3;
 
 /* USER CODE BEGIN Private defines */
 
 /* USER CODE END Private defines */
 
 void MX_I2C1_SMBUS_Init(void);
-void MX_I2C2_SMBUS_Init(void);
+void MX_I2C3_SMBUS_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 

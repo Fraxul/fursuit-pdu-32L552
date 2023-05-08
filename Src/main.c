@@ -105,7 +105,7 @@ int main(void)
   MX_RTC_Init();
   MX_UCPD1_Init();
   MX_I2C1_SMBUS_Init();
-  MX_I2C2_SMBUS_Init();
+  MX_I2C3_SMBUS_Init();
   MX_USB_Device_Init();
   MX_TIM7_Init();
   /* USER CODE BEGIN 2 */
