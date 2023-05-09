@@ -1,6 +1,6 @@
 #include "max17320_registers.h"
 
-// Automatically generated from MAX17320_Config.INI on Sat May  6 23:42:01 2023
+// Automatically generated from MAX17320_Config.INI on Tue May  9 18:50:51 2023
 
 const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x180, .value = 0x00 }, // nXTable0 Register
@@ -56,7 +56,7 @@ const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x1b2, .value = 0x00 }, // nMiscCFG Register
   { .id = 0x1b3, .value = 0x14b4 }, // nDesignCap Register
   { .id = 0x1b4, .value = 0x08 }, // nSBSCFG Register
-  { .id = 0x1b5, .value = 0x06 }, // nPACKCFG Register
+  { .id = 0x1b5, .value = 0x4012 }, // nPACKCFG Register
   { .id = 0x1b6, .value = 0x83b }, // nRelaxCFG Register
   { .id = 0x1b7, .value = 0x2241 }, // nConvgCFG Register
   { .id = 0x1b8, .value = 0xa80 }, // nNVCFG0 Register
@@ -95,7 +95,7 @@ const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x1dc, .value = 0xab3d }, // nDelayCfg Register
   { .id = 0x1dd, .value = 0xe6b }, // nODSCTh Register
   { .id = 0x1de, .value = 0x4355 }, // nODSCCfg Register
-  { .id = 0x1df, .value = 0xa091 }, // nProtCfg2 Register
+  { .id = 0x1df, .value = 0xa045 }, // nProtCfg2 Register
   { .id = 0x1e0, .value = 0x00 }, // nDPLimit Register
   { .id = 0x1e1, .value = 0x00 }, // nScOcvLim Register
   { .id = 0x1e2, .value = 0x00 }, // nAgeFcCfg Register
