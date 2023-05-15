@@ -13,6 +13,10 @@
 
 #include "main.h"
 
+#ifdef __cplusplus
+extern "C" {
+#endif
+
 // I2C parameters
 #define SSD1306_I2C_ADDR        0x3C << 1 // Alternate address 0x3D - When shifted 0x78 and 0x7A
 #define SSD1306_I2C_TIMEOUT     10
@@ -37,5 +41,9 @@ void ssd1306_WriteString(char *msg, uint8_t fsize);	// Font size 0: 5x8, 1: 10x1
 void ssd1306_SetCursor(uint8_t xpos, uint8_t ypos); // Vertical value is with increments of 8 pixels
 void ssd1306_SetContrast(uint8_t contrast);			// Set the display contrast 0 - 255
 void ssd1306_SetDisplayOnOff(uint8_t onOff); 		// 1 = Display on, 0 = Display off
+
+#ifdef __cplusplus
+} // extern "C"
+#endif
 
 #endif  // _SSD1306_H_

@@ -72,6 +72,7 @@ static uint8_t staticUsbTxStreamStorage[usbTxStreamSize + 1];
 DECLARE_TASK(USB_Tx, 128);
 DECLARE_TASK(Shell, 256);
 DECLARE_TASK(PowerManagement, 192);
+DECLARE_TASK(Display, 192);
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -210,6 +211,7 @@ void MX_FREERTOS_Init(void) {
   START_TASK(Shell, osPriorityNormal);
   START_TASK(USB_Tx, osPriorityHigh);
   START_TASK(PowerManagement, osPriorityNormal);
+  START_TASK(Display, osPriorityNormal);
 
   /* USER CODE END RTOS_THREADS */
 
