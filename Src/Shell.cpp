@@ -192,6 +192,20 @@ static void set_exec_callback(struct ush_object* self, struct ush_file_descripto
   }
 }
 
+static SMBUS_HandleTypeDef* smbus_context_from_bus_id(uint8_t bus) {
+  switch (bus) {
+#if 0
+    case 1:
+      return &hsmbus1;
+#endif
+    case 3:
+      return &hsmbus3;
+    default:
+      return nullptr;
+  }
+}
+
+
 
 
 static void smbus_read_exec_callback(struct ush_object* self, struct ush_file_descriptor const* file, int argc, char* argv[]) {
@@ -205,16 +219,10 @@ static void smbus_read_exec_callback(struct ush_object* self, struct ush_file_de
   uint8_t deviceAddress = strtol(argv[2], nullptr, 0);
   uint8_t regAddress = strtol(argv[3], nullptr, 0);
 
-  SMBUS_HandleTypeDef* pCtx = nullptr;
-  switch (bus) {
-    default:
-      bus = 1; // reset to default bus 1 if the index was out of range
-    case 1:
-      pCtx = &hsmbus1;
-      break;
-    case 3:
-      pCtx = &hsmbus3;
-      break;
+  SMBUS_HandleTypeDef* pCtx = smbus_context_from_bus_id(bus);
+  if (!pCtx) {
+    printf("invalid bus ID\n");
+    return;
   }
 
   printf("bus = %u, deviceAddress = 0x%x, regAddress = 0x%x\n", bus, deviceAddress, regAddress);
@@ -243,16 +251,10 @@ static void smbus_write16_exec_callback(struct ush_object* self, struct ush_file
   uint8_t regAddress = strtol(argv[3], nullptr, 0);
   uint16_t value = strtol(argv[4], nullptr, 0);
 
-  SMBUS_HandleTypeDef* pCtx = nullptr;
-  switch (bus) {
-    default:
-      bus = 1; // reset to default bus 1 if the index was out of range
-    case 1:
-      pCtx = &hsmbus1;
-      break;
-    case 3:
-      pCtx = &hsmbus3;
-      break;
+  SMBUS_HandleTypeDef* pCtx = smbus_context_from_bus_id(bus);
+  if (!pCtx) {
+    printf("invalid bus ID\n");
+    return;
   }
 
   printf("bus = %u, deviceAddress = 0x%x, regAddress = 0x%x, value = 0x%x\n", bus, deviceAddress, regAddress, value);

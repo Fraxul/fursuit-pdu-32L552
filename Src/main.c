@@ -104,7 +104,7 @@ int main(void)
   MX_LPUART1_UART_Init();
   MX_RTC_Init();
   MX_UCPD1_Init();
-  MX_I2C1_SMBUS_Init();
+  MX_I2C1_Init();
   MX_I2C3_SMBUS_Init();
   MX_USB_Device_Init();
   MX_TIM7_Init();

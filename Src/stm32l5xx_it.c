@@ -83,7 +83,7 @@
 
 /* External variables --------------------------------------------------------*/
 extern PCD_HandleTypeDef hpcd_USB_FS;
-extern SMBUS_HandleTypeDef hsmbus1;
+extern I2C_HandleTypeDef hi2c1;
 extern SMBUS_HandleTypeDef hsmbus3;
 extern TIM_HandleTypeDef htim6;
 
@@ -251,7 +251,7 @@ void I2C1_EV_IRQHandler(void)
   /* USER CODE BEGIN I2C1_EV_IRQn 0 */
 
   /* USER CODE END I2C1_EV_IRQn 0 */
-  HAL_SMBUS_EV_IRQHandler(&hsmbus1);
+  HAL_I2C_EV_IRQHandler(&hi2c1);
   /* USER CODE BEGIN I2C1_EV_IRQn 1 */
 
   /* USER CODE END I2C1_EV_IRQn 1 */
@@ -265,7 +265,7 @@ void I2C1_ER_IRQHandler(void)
   /* USER CODE BEGIN I2C1_ER_IRQn 0 */
 
   /* USER CODE END I2C1_ER_IRQn 0 */
-  HAL_SMBUS_ER_IRQHandler(&hsmbus1);
+  HAL_I2C_ER_IRQHandler(&hi2c1);
   /* USER CODE BEGIN I2C1_ER_IRQn 1 */
 
   /* USER CODE END I2C1_ER_IRQn 1 */

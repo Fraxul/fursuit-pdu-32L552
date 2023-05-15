@@ -19,13 +19,14 @@
 
 
 
-static volatile TaskHandle_t smbus1Task = nullptr, smbus3Task = nullptr;
+static volatile TaskHandle_t smbusTaskHandles[4];
 
 volatile TaskHandle_t* taskHandleForSMBUSCtx(SMBUS_HandleTypeDef* hsmbus) {
-  if (hsmbus == &hsmbus1) {
-    return &smbus1Task;
-  } else if (hsmbus == &hsmbus3) {
-    return &smbus3Task;
+  switch ((uintptr_t) hsmbus->Instance) {
+    case (uintptr_t) I2C1_BASE_NS: return &smbusTaskHandles[0];
+    case (uintptr_t) I2C2_BASE_NS: return &smbusTaskHandles[1];
+    case (uintptr_t) I2C3_BASE_NS: return &smbusTaskHandles[2];
+    case (uintptr_t) I2C4_BASE_NS: return &smbusTaskHandles[3];
   }
 
   Error_Handler();

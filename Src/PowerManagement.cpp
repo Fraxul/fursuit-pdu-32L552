@@ -23,7 +23,7 @@ extern "C" {
 #define MAX17320_BANK0 0x6C // addr 0x000 - 0x0ff via I2C access
 #define MAX17320_BANK1 0x16 // addr 0x100 - 0x17f via SMBus access (SBS protocol); addr 0x180 - 0x1ff via I2C access (NV memory bank)
 
-#define MAX17320_pCTX &hsmbus1
+#define MAX17320_pCTX &hsmbus3
 #define MP2760_pCTX &hsmbus3
 
 void PM_DisconnectPower() {
