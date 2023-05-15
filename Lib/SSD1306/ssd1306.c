@@ -9,6 +9,8 @@
 **/
 
 #include "ssd1306.h"
+#include <FreeRTOS.h>
+#include <task.h>
 
 // Standard ASCII 5x8 font (adapted from Neven Boyanov and Stephen Denne)
 const uint8_t font_5x8[] = {
@@ -110,17 +112,33 @@ static uint8_t i2cBuff[24] = {
 		};
 
 
+static volatile TaskHandle_t ssd1306WriteTask;
+
 //  IC2 Write Function
 static void i2cWrite(uint8_t mode, uint8_t *data, uint8_t lenght){
-	if (HAL_I2C_Mem_Write(i2cHandle, SSD1306_I2C_ADDR, mode, 1, data, lenght, SSD1306_I2C_TIMEOUT) != HAL_OK) {
+
+	ssd1306WriteTask = xTaskGetCurrentTaskHandle();
+	ulTaskNotifyValueClear(ssd1306WriteTask, 0xffffffffUL);
+
+	if (HAL_I2C_Mem_Write_DMA(i2cHandle, SSD1306_I2C_ADDR, mode, I2C_MEMADD_SIZE_8BIT, data, lenght) != HAL_OK) {
 		Error_Handler();
 	}
+
+	ulTaskNotifyTake(pdFALSE, pdMS_TO_TICKS(SSD1306_I2C_TIMEOUT));
+}
+
+void ssd1306_TransactionCompleteCallback(I2C_HandleTypeDef *hi2c) {
+	BaseType_t xHigherPriorityTaskWoken = 0;
+	vTaskNotifyGiveFromISR(ssd1306WriteTask, &xHigherPriorityTaskWoken);
+		portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
 }
 
 
 //  Initialize the display
 void ssd1306_Init(I2C_HandleTypeDef *hi2c) {
 	i2cHandle = hi2c;
+	i2cHandle->MemTxCpltCallback = ssd1306_TransactionCompleteCallback;
+	i2cHandle->ErrorCallback = ssd1306_TransactionCompleteCallback;
 
 	// Send the initialization string
 	i2cWrite(SSD1306_I2C_CMD, i2cBuff, SSD1306_INIT_LEN);

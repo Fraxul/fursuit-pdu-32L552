@@ -42,20 +42,20 @@ void Task_Display(void* unused) {
     ssd1306_lineprintf(0, "%3u%% %uMV %dMA", systemPowerState.stateOfCharge_pct, systemPowerState.batteryVoltage_mV, systemPowerState.batteryCurrent_mA);
 
     if (inputPowerState.isReady) {
-      ssd1306_lineprintf(1, "CHG %uMV %u/%uMA", systemPowerState.chargerPowerInput_mV, systemPowerState.chargerPowerInput_mA, inputPowerState.maxCurrent_mA);
+      ssd1306_lineprintf(1, "IN: %uV %u/%uMA", (systemPowerState.chargerPowerInput_mV + 500) / 1000, systemPowerState.chargerPowerInput_mA, inputPowerState.maxCurrent_mA);
     } else {
-      ssd1306_lineprintf(1, ""); // clear charger line
+      ssd1306_lineprintf(1, ""); // clear input state line
     }
 
     if (systemPowerState.timeToEmpty_seconds != 0 && systemPowerState.timeToEmpty_seconds != 0xffff) {
       int minutes = systemPowerState.timeToEmpty_seconds / 60;
       int seconds = systemPowerState.timeToEmpty_seconds - (minutes * 60);
-      ssd1306_lineprintf(3, "RUNTIME: %u:%02u", minutes, seconds);
+      ssd1306_lineprintf(3, "RUNTIME: %uM %02uS", minutes, seconds);
 
     } else if (systemPowerState.timeToFull_seconds != 0 && systemPowerState.timeToFull_seconds != 0xffff) {
         int minutes = systemPowerState.timeToFull_seconds / 60;
         int seconds = systemPowerState.timeToFull_seconds - (minutes * 60);
-        ssd1306_lineprintf(3, "TO FULL: %u:%02u", minutes, seconds);
+        ssd1306_lineprintf(3, "TO FULL: %uM %02uS", minutes, seconds);
     } else {
       ssd1306_lineprintf(3, ""); // clear the runtime-estimate line, since we have no data.
     }
