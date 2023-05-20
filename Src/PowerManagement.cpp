@@ -39,8 +39,11 @@ void PM_DisconnectPower() {
   PM_NotifyInputPowerStateUpdated();
 }
 
+static volatile bool inputPowerStateUpdated = false;
+
 void PM_NotifyInputPowerStateUpdated() {
-  xTaskNotify(PowerManagementHandle, 0x8000, eSetBits);
+  // We'll just pick it up on the next loop.
+  inputPowerStateUpdated = true;
 }
 
 bool MP2760_SetPowerInputEnabled(bool enabled) {
@@ -298,9 +301,10 @@ void Task_PowerManagement(void*) {
     MAX17320_UpdateSystemPowerState();
     MP2760_UpdateSystemPowerState();
 
-    uint32_t notificationValue = 0;
-    if (pdPASS == xTaskNotifyWait(0, 0x8000, &notificationValue, pdMS_TO_TICKS(5000)) && (notificationValue & 0x8000)) {
+    vTaskDelay(pdMS_TO_TICKS(1000));
+    if (inputPowerStateUpdated) {
       // Notification received -- update the charger.
+      inputPowerStateUpdated = false;
 
       logprintf("Task_PowerManagement: awoke. New settings: isReady=%u V = %lu - %lu mV, max %lu mA, max %lu mW\n",
         inputPowerState.isReady, inputPowerState.minVoltage_mV, inputPowerState.maxVoltage_mV,
@@ -346,6 +350,7 @@ void Task_PowerManagement(void*) {
         }
 
         MP2760_SetInputCurrentLimit(currentLimitStep * i);
+        MAX17320_UpdateSystemPowerState();
         vTaskDelay(pdMS_TO_TICKS(1000));
       }
     }
