@@ -29,19 +29,19 @@ extern "C" {
 /* Includes ------------------------------------------------------------------*/
 #include "stm32l5xx_hal.h"
 
-#include "stm32l5xx_ll_dma.h"
-#include "stm32l5xx_ll_lpuart.h"
-#include "stm32l5xx_ll_rcc.h"
+#include "stm32l5xx_ll_adc.h"
 #include "stm32l5xx_ll_tim.h"
 #include "stm32l5xx_ll_ucpd.h"
+#include "stm32l5xx_ll_usart.h"
+#include "stm32l5xx_ll_rcc.h"
+#include "stm32l5xx_ll_system.h"
+#include "stm32l5xx_ll_gpio.h"
+#include "stm32l5xx_ll_exti.h"
 #include "stm32l5xx_ll_bus.h"
 #include "stm32l5xx_ll_cortex.h"
-#include "stm32l5xx_ll_system.h"
 #include "stm32l5xx_ll_utils.h"
 #include "stm32l5xx_ll_pwr.h"
-#include "stm32l5xx_ll_gpio.h"
-
-#include "stm32l5xx_ll_exti.h"
+#include "stm32l5xx_ll_dma.h"
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
@@ -71,26 +71,26 @@ void Error_Handler(void);
 /* USER CODE END EFP */
 
 /* Private defines -----------------------------------------------------------*/
-#define USER_BUTTON_Pin GPIO_PIN_13
-#define USER_BUTTON_GPIO_Port GPIOC
-#define VBUS_SENSE_Pin GPIO_PIN_2
-#define VBUS_SENSE_GPIO_Port GPIOC
-#define UCPD_FLT_Pin GPIO_PIN_14
-#define UCPD_FLT_GPIO_Port GPIOB
-#define ST_LINK_VCP_TX_Pin GPIO_PIN_7
-#define ST_LINK_VCP_TX_GPIO_Port GPIOG
-#define ST_LINK_VCP_RX_Pin GPIO_PIN_8
-#define ST_LINK_VCP_RX_GPIO_Port GPIOG
-#define LED_GREEN_Pin GPIO_PIN_7
-#define LED_GREEN_GPIO_Port GPIOC
-#define LED_RED_Pin GPIO_PIN_9
-#define LED_RED_GPIO_Port GPIOA
-#define X_SNK1M1_PWR_Pin GPIO_PIN_10
-#define X_SNK1M1_PWR_GPIO_Port GPIOC
-#define UCPD_DBN_Pin GPIO_PIN_5
+#define Power_Button_Pin LL_GPIO_PIN_13
+#define Power_Button_GPIO_Port GPIOC
+#define JetsonPwrEnable_Pin LL_GPIO_PIN_3
+#define JetsonPwrEnable_GPIO_Port GPIOA
+#define DispPwrEnable_Pin LL_GPIO_PIN_4
+#define DispPwrEnable_GPIO_Port GPIOA
+#define TC_VBUS_Sense_Pin LL_GPIO_PIN_5
+#define TC_VBUS_Sense_GPIO_Port GPIOA
+#define ADC_Disp5V_Sense_Pin LL_GPIO_PIN_6
+#define ADC_Disp5V_Sense_GPIO_Port GPIOA
+#define ADC_5V_Sense_Pin LL_GPIO_PIN_7
+#define ADC_5V_Sense_GPIO_Port GPIOA
+#define UCPD_DBN_Pin LL_GPIO_PIN_12
 #define UCPD_DBN_GPIO_Port GPIOB
-#define LED_BLUE_Pin GPIO_PIN_7
-#define LED_BLUE_GPIO_Port GPIOB
+#define UCPD_FLT_Pin LL_GPIO_PIN_8
+#define UCPD_FLT_GPIO_Port GPIOA
+#define UCPD_DBNB5_Pin LL_GPIO_PIN_5
+#define UCPD_DBNB5_GPIO_Port GPIOB
+#define LED_Pin LL_GPIO_PIN_3
+#define LED_GPIO_Port GPIOH
 
 /* USER CODE BEGIN Private defines */
 

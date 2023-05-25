@@ -84,8 +84,8 @@
 /* External variables --------------------------------------------------------*/
 extern PCD_HandleTypeDef hpcd_USB_FS;
 extern DMA_HandleTypeDef hdma_i2c1_tx;
-extern I2C_HandleTypeDef hi2c1;
-extern SMBUS_HandleTypeDef hsmbus3;
+extern SMBUS_HandleTypeDef hsmbus2;
+extern I2C_HandleTypeDef hi2c4;
 extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
@@ -245,6 +245,20 @@ void DMA1_Channel4_IRQHandler(void)
 }
 
 /**
+  * @brief This function handles DMA1 channel5 global interrupt.
+  */
+void DMA1_Channel5_IRQHandler(void)
+{
+  /* USER CODE BEGIN DMA1_Channel5_IRQn 0 */
+
+  /* USER CODE END DMA1_Channel5_IRQn 0 */
+
+  /* USER CODE BEGIN DMA1_Channel5_IRQn 1 */
+
+  /* USER CODE END DMA1_Channel5_IRQn 1 */
+}
+
+/**
   * @brief This function handles TIM6 global interrupt.
   */
 void TIM6_IRQHandler(void)
@@ -259,44 +273,44 @@ void TIM6_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles I2C1 event interrupt / I2C1 wake-up interrupt through EXTI line 23.
+  * @brief This function handles I2C2 event interrupt / I2C2 wake-up interrupt through EXTI line 24.
   */
-void I2C1_EV_IRQHandler(void)
+void I2C2_EV_IRQHandler(void)
 {
-  /* USER CODE BEGIN I2C1_EV_IRQn 0 */
+  /* USER CODE BEGIN I2C2_EV_IRQn 0 */
 
-  /* USER CODE END I2C1_EV_IRQn 0 */
-  HAL_I2C_EV_IRQHandler(&hi2c1);
-  /* USER CODE BEGIN I2C1_EV_IRQn 1 */
+  /* USER CODE END I2C2_EV_IRQn 0 */
+  HAL_SMBUS_EV_IRQHandler(&hsmbus2);
+  /* USER CODE BEGIN I2C2_EV_IRQn 1 */
 
-  /* USER CODE END I2C1_EV_IRQn 1 */
+  /* USER CODE END I2C2_EV_IRQn 1 */
 }
 
 /**
-  * @brief This function handles I2C1 error interrupt.
+  * @brief This function handles I2C2 error interrupt.
   */
-void I2C1_ER_IRQHandler(void)
+void I2C2_ER_IRQHandler(void)
 {
-  /* USER CODE BEGIN I2C1_ER_IRQn 0 */
+  /* USER CODE BEGIN I2C2_ER_IRQn 0 */
 
-  /* USER CODE END I2C1_ER_IRQn 0 */
-  HAL_I2C_ER_IRQHandler(&hi2c1);
-  /* USER CODE BEGIN I2C1_ER_IRQn 1 */
+  /* USER CODE END I2C2_ER_IRQn 0 */
+  HAL_SMBUS_ER_IRQHandler(&hsmbus2);
+  /* USER CODE BEGIN I2C2_ER_IRQn 1 */
 
-  /* USER CODE END I2C1_ER_IRQn 1 */
+  /* USER CODE END I2C2_ER_IRQn 1 */
 }
 
 /**
-  * @brief This function handles LPUART1 global interrupt / LPUART1 wake-up interrupt through EXTI line 31.
+  * @brief This function handles USART1 global interrupt / USART1 wake-up interrupt through EXTI line 26.
   */
-void LPUART1_IRQHandler(void)
+void USART1_IRQHandler(void)
 {
-  /* USER CODE BEGIN LPUART1_IRQn 0 */
-  LogDMA_UART_IRQHandler();
-  /* USER CODE END LPUART1_IRQn 0 */
-  /* USER CODE BEGIN LPUART1_IRQn 1 */
+  /* USER CODE BEGIN USART1_IRQn 0 */
 
-  /* USER CODE END LPUART1_IRQn 1 */
+  /* USER CODE END USART1_IRQn 0 */
+  /* USER CODE BEGIN USART1_IRQn 1 */
+
+  /* USER CODE END USART1_IRQn 1 */
 }
 
 /**
@@ -314,31 +328,31 @@ void USB_FS_IRQHandler(void)
 }
 
 /**
-  * @brief This function handles I2C3 event interrupt / I2C3 wake-up interrupt through EXTI line 25.
+  * @brief This function handles I2C4 event interrupt / I2C4 wake-up interrupt through EXTI line 40.
   */
-void I2C3_EV_IRQHandler(void)
+void I2C4_EV_IRQHandler(void)
 {
-  /* USER CODE BEGIN I2C3_EV_IRQn 0 */
+  /* USER CODE BEGIN I2C4_EV_IRQn 0 */
 
-  /* USER CODE END I2C3_EV_IRQn 0 */
-  HAL_SMBUS_EV_IRQHandler(&hsmbus3);
-  /* USER CODE BEGIN I2C3_EV_IRQn 1 */
+  /* USER CODE END I2C4_EV_IRQn 0 */
+  HAL_I2C_EV_IRQHandler(&hi2c4);
+  /* USER CODE BEGIN I2C4_EV_IRQn 1 */
 
-  /* USER CODE END I2C3_EV_IRQn 1 */
+  /* USER CODE END I2C4_EV_IRQn 1 */
 }
 
 /**
-  * @brief This function handles I2C3 error interrupt.
+  * @brief This function handles I2C4 error interrupt.
   */
-void I2C3_ER_IRQHandler(void)
+void I2C4_ER_IRQHandler(void)
 {
-  /* USER CODE BEGIN I2C3_ER_IRQn 0 */
+  /* USER CODE BEGIN I2C4_ER_IRQn 0 */
 
-  /* USER CODE END I2C3_ER_IRQn 0 */
-  HAL_SMBUS_ER_IRQHandler(&hsmbus3);
-  /* USER CODE BEGIN I2C3_ER_IRQn 1 */
+  /* USER CODE END I2C4_ER_IRQn 0 */
+  HAL_I2C_ER_IRQHandler(&hi2c4);
+  /* USER CODE BEGIN I2C4_ER_IRQn 1 */
 
-  /* USER CODE END I2C3_ER_IRQn 1 */
+  /* USER CODE END I2C4_ER_IRQn 1 */
 }
 
 /**
