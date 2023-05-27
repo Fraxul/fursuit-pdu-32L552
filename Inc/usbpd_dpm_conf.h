@@ -76,16 +76,16 @@ USBPD_SettingsTypeDef       DPM_Settings[USBPD_PORT_COUNT] =
     {
       .PE_UnchunkSupport                = USBPD_FALSE,  /* support Unchunked mode (valid only spec revision 3.0)   */
       .PE_FastRoleSwapSupport           = USBPD_FALSE,   /* support fast role swap only spec revision 3.0            */
-      .Is_GetPPSStatus_Supported        = USBPD_TRUE,  /*!< PPS message NOT supported by PE stack */
+      .Is_GetPPSStatus_Supported        = USBPD_FALSE,  /*!< PPS message NOT supported by PE stack */
       .Is_SrcCapaExt_Supported          = USBPD_FALSE,  /*!< Source_Capabilities_Extended message supported or not by DPM */
-      .Is_Alert_Supported               = USBPD_TRUE,   /*!< Alert message supported or not by DPM */
-      .Is_GetStatus_Supported           = USBPD_TRUE,   /*!< Status message supported or not by DPM (Is_Alert_Supported should be enabled) */
+      .Is_Alert_Supported               = USBPD_FALSE,   /*!< Alert message supported or not by DPM */
+      .Is_GetStatus_Supported           = USBPD_FALSE,   /*!< Status message supported or not by DPM (Is_Alert_Supported should be enabled) */
       .Is_GetManufacturerInfo_Supported = USBPD_FALSE,  /*!< Manufacturer_Info message supported or not by DPM */
       .Is_GetCountryCodes_Supported     = USBPD_FALSE,  /*!< Country_Codes message supported or not by DPM */
       .Is_GetCountryInfo_Supported      = USBPD_FALSE,  /*!< Country_Info message supported or not by DPM */
       .Is_SecurityRequest_Supported     = USBPD_FALSE,  /*!< Security_Response message supported or not by DPM */
       .Is_FirmUpdateRequest_Supported   = USBPD_FALSE,  /*!< Firmware update response message supported by PE */
-      .Is_GetBattery_Supported          = USBPD_TRUE,  /*!< Get Battery Capabitity and Status messages supported by PE */
+      .Is_GetBattery_Supported          = USBPD_FALSE,  /*!< Get Battery Capabitity and Status messages supported by PE */
     },
 
     .CAD_SRCToggleTime = 0,                    /* uint8_t CAD_SRCToggleTime; */
@@ -107,8 +107,8 @@ USBPD_USER_SettingsTypeDef       DPM_USER_Settings[USBPD_PORT_COUNT] =
   {
     .PE_DataSwap = USBPD_FALSE,                  /* support data swap                                       */
     .PE_VconnSwap = USBPD_FALSE,                 /* support VCONN swap                                  */
-    .PE_DR_Swap_To_DFP = USBPD_FALSE,                  /*  Support of DR Swap to DFP                                  */
-    .PE_DR_Swap_To_UFP = USBPD_FALSE,                  /*  Support of DR Swap to UFP                                  */
+    .PE_DR_Swap_To_DFP = USBPD_TRUE,                  /*  Support of DR Swap to DFP                                  */
+    .PE_DR_Swap_To_UFP = USBPD_TRUE,                  /*  Support of DR Swap to UFP                                  */
 #if _MANU_INFO
     .DPM_ManuInfoPort =                      /*!< Manufacturer information used for the port            */
     {

@@ -150,9 +150,9 @@ void vApplicationTickHook( void )
   // Blink the LED to show that the system is still alive
   TickType_t ticks = xTaskGetTickCount();
   if (ticks & 0x200) {
-    LL_GPIO_SetOutputPin(LED_BLUE_GPIO_Port, LED_BLUE_Pin);
+    LL_GPIO_SetOutputPin(LED_GPIO_Port, LED_Pin);
   } else {
-    LL_GPIO_ResetOutputPin(LED_BLUE_GPIO_Port, LED_BLUE_Pin);
+    LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
   }
 }
 /* USER CODE END 3 */

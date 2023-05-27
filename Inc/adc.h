@@ -40,6 +40,11 @@ void MX_ADC1_Init(void);
 
 /* USER CODE BEGIN Prototypes */
 
+// All functions return millivolts
+uint32_t ADC_read_5V_Sense();
+uint32_t ADC_read_Disp5V_Sense();
+uint32_t ADC_read_TC_VBUS_Sense();
+
 /* USER CODE END Prototypes */
 
 #ifdef __cplusplus

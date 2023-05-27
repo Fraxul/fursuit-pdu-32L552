@@ -11,6 +11,7 @@
 #include "ssd1306.h"
 #include <FreeRTOS.h>
 #include <task.h>
+#include "log.h"
 
 // Standard ASCII 5x8 font (adapted from Neven Boyanov and Stephen Denne)
 const uint8_t font_5x8[] = {
@@ -120,8 +121,17 @@ static void i2cWrite(uint8_t mode, uint8_t *data, uint8_t lenght){
 	ssd1306WriteTask = xTaskGetCurrentTaskHandle();
 	ulTaskNotifyValueClear(ssd1306WriteTask, 0xffffffffUL);
 
-	if (HAL_I2C_Mem_Write_DMA(i2cHandle, SSD1306_I2C_ADDR, mode, I2C_MEMADD_SIZE_8BIT, data, lenght) != HAL_OK) {
-		Error_Handler();
+	while (1) {
+		HAL_StatusTypeDef st = HAL_I2C_Mem_Write_DMA(i2cHandle, SSD1306_I2C_ADDR, mode, I2C_MEMADD_SIZE_8BIT, data, lenght);
+		if (st == HAL_BUSY) {
+			vTaskDelay(1);
+			continue;
+		}
+
+		if (st != HAL_OK) {
+			logprintf("SSD1306 i2cWrite() failed with HAL status %u\n", st);
+		}
+		break;
 	}
 
 	ulTaskNotifyTake(pdFALSE, pdMS_TO_TICKS(SSD1306_I2C_TIMEOUT));

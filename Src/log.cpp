@@ -16,7 +16,8 @@ static volatile uint16_t sLogTx_NextReadPtr = 0;
 
 
 #define LOG_DMA_PERIPH DMA1
-#define DMA_TARGET LOG_DMA_PERIPH, LL_DMA_CHANNEL_3
+#define DMA_TARGET LOG_DMA_PERIPH, LL_DMA_CHANNEL_8
+#define CLEAR_TC_FLAG() LL_DMA_ClearFlag_TC8(LOG_DMA_PERIPH)
 
 extern "C" {
 
@@ -29,6 +30,7 @@ extern "C" {
       return; // nothing to transmit.
 
     LL_DMA_SetMemoryAddress(DMA_TARGET, (uint32_t) (sLogBuffer + sLogTx_NextReadPtr));
+    LL_DMA_SetPeriphAddress(DMA_TARGET, LL_USART_DMA_GetRegAddr(USART1, LL_USART_DMA_REG_DATA_TRANSMIT));
 
     uint32_t dmaLength;
     if (sLogWritePtr < sLogTx_NextReadPtr) {
@@ -49,26 +51,26 @@ extern "C" {
     if (dmaLength == 0)
       return; // nothing to do?
 
-
     LL_DMA_SetDataLength(DMA_TARGET, dmaLength);
 
-    LL_LPUART_ClearFlag_TC(LPUART1);
+    LL_USART_EnableDMAReq_TX(USART1);
+    LL_USART_ClearFlag_TC(USART1);
     LL_DMA_EnableChannel(DMA_TARGET);
-    LL_LPUART_EnableIT_TC(LPUART1);
+    LL_USART_EnableIT_TC(USART1);
 
     sLogTx_DMABusy = true;
   }
 
   void LogDMA_UART_IRQHandler() {
-    if (!LL_LPUART_IsActiveFlag_TC(LPUART1)) {
+    if (!LL_USART_IsActiveFlag_TC(USART1)) {
       return; // not us.
     }
 
-    LL_LPUART_DisableIT_TC(LPUART1);
+    LL_USART_DisableIT_TC(USART1);
 
     // DMA finished, disable the channel.
     LL_DMA_DisableChannel(DMA_TARGET);
-    LL_DMA_ClearFlag_TC3(DMA1);
+    CLEAR_TC_FLAG();
     sLogTx_DMABusy = false;
 
     // See if we got anything else to transmit in the interim.

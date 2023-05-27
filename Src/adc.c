@@ -21,7 +21,46 @@
 #include "adc.h"
 
 /* USER CODE BEGIN 0 */
+enum ADCChannel
+{
+  kADC_5V_Sense = 0,
+  kADC_Disp5V_Sense = 1,
+  kADC_TC_VBUS_Sense = 2,
+  kADC_ChannelCount
+};
 
+uint32_t adcRawData[kADC_ChannelCount];
+
+uint32_t ADC_read_5V_Sense();
+uint32_t ADC_read_Disp5V_Sense();
+uint32_t ADC_read_TC_VBUS();
+
+uint32_t ADC_read_5V_Sense()
+{                                           // returns value in millivolts
+  uint32_t raw = adcRawData[kADC_5V_Sense]; // range: 0 - 4095 (0xfff)
+  // rescale to millivolt range and adjust for external resistor divider (5V ~20k~ ADC ~33k~ gnd)
+  // ADC full-scale is 3300 millivolts for 4095 units
+  // mv = (raw * 3300) / 4095; mv_scaled = mv * 53000 / 33000
+  // reduces to mv_scaled = (raw * 5300) / 4095 -- 1.29426
+  // (raw * 21205 / 16384) is 1.29425, lets us use a shift instead of divide
+
+  return (raw * 21205) / 16384;
+}
+
+uint32_t ADC_read_Disp5V_Sense()
+{ // returns value in millivolts
+  // Same comments as ADC_read_5V_Sense apply, they use the same resistor divider.
+  uint32_t raw = adcRawData[kADC_Disp5V_Sense];
+  return (raw * 21205) / 16384;
+}
+
+uint32_t ADC_read_TC_VBUS_Sense()
+{
+  // Resistor divider is 0-20v ~150k~ ADC ~20k~ gnd
+  // mv = (raw * 3300) / 4095; mv_scaled = mv * 170000 / 20000
+  // reduces to 28050 / 4095, approximated as 112227 / 16384
+  return (adcRawData[kADC_TC_VBUS_Sense] * 112227) / 16384;
+}
 /* USER CODE END 0 */
 
 /* ADC1 init function */
@@ -37,6 +76,16 @@ void MX_ADC1_Init(void)
   LL_ADC_CommonInitTypeDef ADC_CommonInitStruct = {0};
 
   LL_GPIO_InitTypeDef GPIO_InitStruct = {0};
+  RCC_PeriphCLKInitTypeDef PeriphClkInit = {0};
+
+  /** Initializes the peripherals clock
+  */
+  PeriphClkInit.PeriphClockSelection = RCC_PERIPHCLK_ADC;
+  PeriphClkInit.AdcClockSelection = RCC_ADCCLKSOURCE_SYSCLK;
+  if (HAL_RCCEx_PeriphCLKConfig(&PeriphClkInit) != HAL_OK)
+  {
+    Error_Handler();
+  }
 
   /* Peripheral clock enable */
   LL_AHB2_GRP1_EnableClock(LL_AHB2_GRP1_PERIPH_ADC);
@@ -55,23 +104,23 @@ void MX_ADC1_Init(void)
   /* ADC1 DMA Init */
 
   /* ADC1 Init */
-  LL_DMA_SetPeriphRequest(DMA1, LL_DMA_CHANNEL_5, LL_DMAMUX_REQ_ADC1);
+  LL_DMA_SetPeriphRequest(DMA1, LL_DMA_CHANNEL_4, LL_DMAMUX_REQ_ADC1);
 
-  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_5, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+  LL_DMA_SetDataTransferDirection(DMA1, LL_DMA_CHANNEL_4, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
 
-  LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PRIORITY_LOW);
+  LL_DMA_SetChannelPriorityLevel(DMA1, LL_DMA_CHANNEL_4, LL_DMA_PRIORITY_LOW);
 
-  LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MODE_CIRCULAR);
+  LL_DMA_SetMode(DMA1, LL_DMA_CHANNEL_4, LL_DMA_MODE_CIRCULAR);
 
-  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PERIPH_NOINCREMENT);
+  LL_DMA_SetPeriphIncMode(DMA1, LL_DMA_CHANNEL_4, LL_DMA_PERIPH_NOINCREMENT);
 
-  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MEMORY_INCREMENT);
+  LL_DMA_SetMemoryIncMode(DMA1, LL_DMA_CHANNEL_4, LL_DMA_MEMORY_INCREMENT);
 
-  LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_5, LL_DMA_PDATAALIGN_HALFWORD);
+  LL_DMA_SetPeriphSize(DMA1, LL_DMA_CHANNEL_4, LL_DMA_PDATAALIGN_HALFWORD);
 
-  LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_5, LL_DMA_MDATAALIGN_HALFWORD);
+  LL_DMA_SetMemorySize(DMA1, LL_DMA_CHANNEL_4, LL_DMA_MDATAALIGN_HALFWORD);
 
-  LL_DMA_DisableChannelPrivilege(DMA1, LL_DMA_CHANNEL_5);
+  LL_DMA_DisableChannelPrivilege(DMA1, LL_DMA_CHANNEL_4);
 
   /* USER CODE BEGIN ADC1_Init 1 */
 
@@ -130,6 +179,29 @@ void MX_ADC1_Init(void)
   LL_ADC_SetChannelSamplingTime(ADC1, LL_ADC_CHANNEL_12, LL_ADC_SAMPLINGTIME_247CYCLES_5);
   LL_ADC_SetChannelSingleDiff(ADC1, LL_ADC_CHANNEL_12, LL_ADC_SINGLE_ENDED);
   /* USER CODE BEGIN ADC1_Init 2 */
+
+  // Setup DMA for continuous conversion of ADC sense channels
+  LL_DMA_SetDataLength(DMA1, LL_DMA_CHANNEL_6, kADC_ChannelCount);
+
+  LL_DMA_ConfigAddresses(DMA1, LL_DMA_CHANNEL_6,
+                         LL_ADC_DMA_GetRegAddr(ADC1, LL_ADC_DMA_REG_REGULAR_DATA),
+                         (uint32_t)adcRawData, LL_DMA_DIRECTION_PERIPH_TO_MEMORY);
+
+  // Don't need DMA interrupts
+  LL_DMA_DisableIT_HT(DMA1, LL_DMA_CHANNEL_6);
+  LL_DMA_DisableIT_TC(DMA1, LL_DMA_CHANNEL_6);
+  LL_DMA_DisableIT_TE(DMA1, LL_DMA_CHANNEL_6);
+
+  // Calibrate the ADC
+  LL_ADC_StartCalibration(ADC1, LL_ADC_SINGLE_ENDED);
+  while (LL_ADC_IsCalibrationOnGoing(ADC1))  {}
+
+  // Enable ADC
+  LL_ADC_Enable(ADC1);
+
+  // Enable DMA and start conversion
+  LL_DMA_EnableChannel(DMA1, LL_DMA_CHANNEL_6);
+  LL_ADC_REG_StartConversion(ADC1);
 
   /* USER CODE END ADC1_Init 2 */
 

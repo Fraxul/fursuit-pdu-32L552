@@ -181,10 +181,10 @@ static void set_exec_callback(struct ush_object* self, struct ush_file_descripto
   // arguments validation
   if (strcmp(argv[1], "1") == 0) {
     // turn led on
-    LL_GPIO_SetOutputPin(LED_RED_GPIO_Port, LED_RED_Pin);
+    LL_GPIO_SetOutputPin(LED_GPIO_Port, LED_Pin);
   } else if (strcmp(argv[1], "0") == 0) {
     // turn led off
-    LL_GPIO_ResetOutputPin(LED_RED_GPIO_Port, LED_RED_Pin);
+    LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
   } else {
     // return predefined error message
     ush_print_status(self, USH_STATUS_ERROR_COMMAND_WRONG_ARGUMENTS);
@@ -198,8 +198,8 @@ static SMBUS_HandleTypeDef* smbus_context_from_bus_id(uint8_t bus) {
     case 1:
       return &hsmbus1;
 #endif
-    case 3:
-      return &hsmbus3;
+    case 2:
+      return &hsmbus2;
     default:
       return nullptr;
   }
@@ -267,7 +267,7 @@ static void smbus_write16_exec_callback(struct ush_object* self, struct ush_file
 // led file get data callback
 size_t led_get_data_callback(struct ush_object* self, struct ush_file_descriptor const* file, uint8_t** data) {
   // read current led state
-  bool state = LL_GPIO_IsOutputPinSet(LED_RED_GPIO_Port, LED_RED_Pin);
+  bool state = LL_GPIO_IsOutputPinSet(LED_GPIO_Port, LED_Pin);
   // return pointer to data
   *data = (uint8_t*)((state) ? "1\r\n" : "0\r\n");
   // return data size
@@ -283,10 +283,10 @@ void led_set_data_callback(struct ush_object* self, struct ush_file_descriptor c
   // arguments validation
   if (data[0] == '1') {
     // turn led on
-    LL_GPIO_SetOutputPin(LED_RED_GPIO_Port, LED_RED_Pin);
+    LL_GPIO_SetOutputPin(LED_GPIO_Port, LED_Pin);
   } else if (data[0] == '0') {
     // turn led off
-    LL_GPIO_ResetOutputPin(LED_RED_GPIO_Port, LED_RED_Pin);
+    LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
   }
 }
 
