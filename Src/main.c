@@ -33,7 +33,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
-
+#include "log.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -43,6 +43,24 @@
 
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
+
+// Shim function to work around an STM32CubeMX bug (as of v6.8.1) for STM32L5 processors:
+//
+// HSI isn't automatically enabled with the UCPD peripheral, but is the
+// only clock input for that peripheral and is required for it to operate.
+// If the primary system clock and PLLs are all running off of different
+// sources, HSI will be disabled and the UCPD peripheral will not work.
+//
+// As a workaround, we force-enable the HSI before passing the parameters on to HAL_RCC_OscConfig.
+static inline HAL_StatusTypeDef HAL_RCC_OscConfig_Shim(RCC_OscInitTypeDef  *RCC_OscInitStruct) {
+  RCC_OscInitStruct->HSIState = RCC_HSI_ON;
+  RCC_OscInitStruct->OscillatorType |= RCC_OSCILLATORTYPE_HSI;
+  RCC_OscInitStruct->HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
+  return HAL_RCC_OscConfig(RCC_OscInitStruct);
+}
+
+#define HAL_RCC_OscConfig HAL_RCC_OscConfig_Shim
+
 
 /* USER CODE END PD */
 
@@ -159,15 +177,12 @@ void SystemClock_Config(void)
   /** Initializes the RCC Oscillators according to the specified parameters
   * in the RCC_OscInitTypeDef structure.
   */
-  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSI48|RCC_OSCILLATORTYPE_HSI
-                              |RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.OscillatorType = RCC_OSCILLATORTYPE_HSE|RCC_OSCILLATORTYPE_LSE;
+  RCC_OscInitStruct.HSEState = RCC_HSE_ON;
   RCC_OscInitStruct.LSEState = RCC_LSE_ON;
-  RCC_OscInitStruct.HSIState = RCC_HSI_ON;
-  RCC_OscInitStruct.HSI48State = RCC_HSI48_ON;
-  RCC_OscInitStruct.HSICalibrationValue = RCC_HSICALIBRATION_DEFAULT;
   RCC_OscInitStruct.PLL.PLLState = RCC_PLL_ON;
-  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSI;
-  RCC_OscInitStruct.PLL.PLLM = 4;
+  RCC_OscInitStruct.PLL.PLLSource = RCC_PLLSOURCE_HSE;
+  RCC_OscInitStruct.PLL.PLLM = 3;
   RCC_OscInitStruct.PLL.PLLN = 55;
   RCC_OscInitStruct.PLL.PLLP = RCC_PLLP_DIV7;
   RCC_OscInitStruct.PLL.PLLQ = RCC_PLLQ_DIV2;
