@@ -1,6 +1,6 @@
 #include "max17320_registers.h"
 
-// Automatically generated from MAX17320_Config.INI on Tue May  9 18:50:51 2023
+// Automatically generated from MAX17320_Config.INI on Sun May 28 01:54:45 2023
 
 const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x180, .value = 0x00 }, // nXTable0 Register
@@ -63,10 +63,6 @@ const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x1b9, .value = 0x182 }, // nNVCFG1 Register
   { .id = 0x1ba, .value = 0xbe2d }, // nNVCFG2 Register
   { .id = 0x1bb, .value = 0x909 }, // nHibCFG Register
-  { .id = 0x1bc, .value = 0x6e26 }, // nROMID0 Register
-  { .id = 0x1bd, .value = 0x9d58 }, // nROMID1 Register
-  { .id = 0x1be, .value = 0xe0 }, // nROMID2 Register
-  { .id = 0x1bf, .value = 0xa100 }, // nROMID3 Register
   { .id = 0x1c2, .value = 0x2079 }, // nChgCfg0 Register
   { .id = 0x1c3, .value = 0xe1 }, // nChgCtrl0 Register
   { .id = 0x1c4, .value = 0x00 }, // nRGain Register

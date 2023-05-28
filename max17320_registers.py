@@ -27,7 +27,13 @@ const MAX17320_Register max17320_defaultConfig[] = {{
                 nRSense = value
 
             # Skip registers that are reserved and should not be written to.
-            if (reg == 0x1c0 or reg == 0x1c1 or reg == 0x1cb or reg == 0x1e4 or reg == 0x1e5):
+            if (reg == 0x1c0 or reg == 0x1c1): # nPReserved0, nPReserved1
+                continue
+            if (reg == 0x1cb): # Reserved
+                continue
+            if (reg == 0x1e4 or reg == 0x1e5): # Reserved
+                continue
+            if (reg >= 0x1bc and reg <= 0x1bf): # nROMID[0-3]
                 continue
 
             cpp.write(f"  {{ .id = {reg:#02x}, .value = {value:#04x} }}, // {comment}\n")

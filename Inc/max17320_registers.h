@@ -1,14 +1,14 @@
 #pragma once
 #include <stdint.h>
 
-// Automatically generated from MAX17320_Config.INI on Tue May  9 18:50:51 2023
+// Automatically generated from MAX17320_Config.INI on Sun May 28 01:54:45 2023
 
 struct MAX17320_Register {
   uint16_t id;
   uint16_t value;
 };
 
-static constexpr uint8_t max17320_defaultConfig_length = 107;
+static constexpr uint8_t max17320_defaultConfig_length = 103;
 static constexpr uint16_t max17320_nRSense = 500;
 
 // Convert value from register 0x1c to microamps using the sense resistor value
