@@ -126,7 +126,7 @@ int main(void)
   MX_I2C2_SMBUS_Init();
   MX_USART1_UART_Init();
   MX_ICACHE_Init();
-  MX_I2C4_Init();
+  MX_I2C4_SMBUS_Init();
   /* USER CODE BEGIN 2 */
 
   logprintf("main() done\n");

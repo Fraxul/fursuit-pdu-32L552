@@ -83,10 +83,11 @@
 
 /* External variables --------------------------------------------------------*/
 extern PCD_HandleTypeDef hpcd_USB_FS;
+extern DMA_HandleTypeDef hdma_adc1;
 extern DMA_HandleTypeDef hdma_i2c1_tx;
 extern I2C_HandleTypeDef hi2c1;
 extern SMBUS_HandleTypeDef hsmbus2;
-extern I2C_HandleTypeDef hi2c4;
+extern SMBUS_HandleTypeDef hsmbus4;
 extern TIM_HandleTypeDef htim6;
 
 /* USER CODE BEGIN EV */
@@ -239,7 +240,7 @@ void DMA1_Channel4_IRQHandler(void)
   /* USER CODE BEGIN DMA1_Channel4_IRQn 0 */
 
   /* USER CODE END DMA1_Channel4_IRQn 0 */
-
+  HAL_DMA_IRQHandler(&hdma_adc1);
   /* USER CODE BEGIN DMA1_Channel4_IRQn 1 */
 
   /* USER CODE END DMA1_Channel4_IRQn 1 */
@@ -364,7 +365,7 @@ void I2C4_EV_IRQHandler(void)
   /* USER CODE BEGIN I2C4_EV_IRQn 0 */
 
   /* USER CODE END I2C4_EV_IRQn 0 */
-  HAL_I2C_EV_IRQHandler(&hi2c4);
+  HAL_SMBUS_EV_IRQHandler(&hsmbus4);
   /* USER CODE BEGIN I2C4_EV_IRQn 1 */
 
   /* USER CODE END I2C4_EV_IRQn 1 */
@@ -378,7 +379,7 @@ void I2C4_ER_IRQHandler(void)
   /* USER CODE BEGIN I2C4_ER_IRQn 0 */
 
   /* USER CODE END I2C4_ER_IRQn 0 */
-  HAL_I2C_ER_IRQHandler(&hi2c4);
+  HAL_SMBUS_ER_IRQHandler(&hsmbus4);
   /* USER CODE BEGIN I2C4_ER_IRQn 1 */
 
   /* USER CODE END I2C4_ER_IRQn 1 */
