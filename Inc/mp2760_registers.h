@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-// Automatically generated from MP2760GVT-XXXX.txt on Sun May  7 22:09:51 2023
+// Automatically generated from MP2760GVT-XXXX.txt on Sat May 27 22:25:13 2023
 
 struct MP2760_Register {
   uint8_t id;

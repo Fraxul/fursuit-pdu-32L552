@@ -51,7 +51,8 @@ bool MP2760_SetPowerInputEnabled(bool enabled) {
   // REG12 (Configuration Register 4)
   // bit 6: DC/DC_EN -- Enable (1) or disable (0) the DC/DC converter.
   // bit 0: CHG_EN -- Enable (1) or disable (0) battery charging.
-  const uint16_t bits = 0b0100'0001;
+  // const uint16_t bits = 0b0100'0001; // DC/DC_EN and CHG_EN
+  const uint16_t bits = 0b0000'0001; // only CHG_EN
   return PM_SMBUS_RMWReg16(MP2760_pCTX, MP2760_ADDR, 0x12, ~(bits), enabled ? bits : 0);
 }
 

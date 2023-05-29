@@ -1,6 +1,6 @@
 #include "mp2760_registers.h"
 
-// Automatically generated from MP2760GVT-XXXX.txt on Sun May  7 22:09:51 2023
+// Automatically generated from MP2760GVT-XXXX.txt on Sat May 27 22:25:13 2023
 
 const MP2760_Register mp2760_defaultConfig[] = {
   // REG05[9]:Watchdog Timer Setting when Input Absent=0-Disable
@@ -79,10 +79,10 @@ const MP2760_Register mp2760_defaultConfig[] = {
   // REG12[3]:SRC Mode Enable=0-Disable Discharge
   // REG12[4]:Charge Termination Enable=1-Enable
   // REG12[5]:BGATE Driver Enable=1-Enable BGATE driver block
-  // REG12[6]:DC/DC Enable=0-Disable
+  // REG12[6]:DC/DC Enable=1-Enable
   // REG12[8:7]:Watchdog Timer=00-Disable Timer
   // REG12[9]:Watchdog Feed Bit=0-Normal
-  { .id = 0x12, .value = 0x3c32 },
+  { .id = 0x12, .value = 0x3c72 },
   // REG14[13:6]:Fast Charge Current=3600
   { .id = 0x14, .value = 0x1200 },
   // REG15[14:4]:Battery Full Voltage=16800

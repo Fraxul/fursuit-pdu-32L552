@@ -11,7 +11,7 @@
 0000	0	0F	15	REG0F	F241	62017	
 0000	0	10	16	REG10	067E	1662	
 0000	0	11	17	REG11	60E8	24808	
-0000	0	12	18	REG12	3C32	15410	
+0000	0	12	18	REG12	3C72	15474	
 0000	0	14	20	REG14	1200	4608	
 0000	0	15	21	REG15	6900	26880	
 0000	0	16	22	REG16	0000	0	
@@ -39,7 +39,7 @@ END
 **** Configuration file: MP2760GVT-XXXX	
 **** Package: FCQFN30 4 *5	
 **** Soft rev: 1.4.0.0 (Build: 2022-05-30 15:36:53)	
-**** Date: 05/07/2023	
+**** Date: 05/27/2023	
 **** 	
 **** 	
 ******************** Registers(Config) *************************	
@@ -108,7 +108,7 @@ END
 **** REG12[3]:SRC Mode Enable=0-Disable Discharge	
 **** REG12[4]:Charge Termination Enable=1-Enable	
 **** REG12[5]:BGATE Driver Enable=1-Enable BGATE driver block	
-**** REG12[6]:DC/DC Enable=0-Disable	
+**** REG12[6]:DC/DC Enable=1-Enable	
 **** REG12[8:7]:Watchdog Timer=00-Disable Timer	
 **** REG12[9]:Watchdog Feed Bit=0-Normal	
 **** REG14[13:6]:Fast Charge Current=3600	
