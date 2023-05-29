@@ -85,7 +85,7 @@ bool PM_SMBUS_ResetBus(SMBUS_HandleTypeDef* pCtx) {
 
 bool PM_SMBUS_WriteReg16(SMBUS_HandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t regAddr, uint16_t regValue) {
   if (!PM_SMBUS_WaitForReady(pCtx)) {
-    logprintf("PM_SMBUS_WriteReg16(%p, %x, %x, %x): Device not ready -- state = %x (before start)\n", pCtx->Instance, deviceAddr, regAddr, regValue, HAL_SMBUS_GetState(pCtx));
+    logprintf("%s(%p, %x, %x, %x): Device not ready -- state = %x (before start)\n", __func__, pCtx->Instance, deviceAddr, regAddr, regValue, HAL_SMBUS_GetState(pCtx));
     return PM_SMBUS_ResetBus(pCtx);
   }
 
@@ -94,13 +94,19 @@ bool PM_SMBUS_WriteReg16(SMBUS_HandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t 
   uint8_t data[] = {regAddr, (uint8_t) (regValue & 0xffU), (uint8_t) ((regValue & 0xff00U) >> 8)};
   HAL_StatusTypeDef st = HAL_SMBUS_Master_Transmit_IT(pCtx, deviceAddr, data, sizeof(data), SMBUS_FIRST_AND_LAST_FRAME_NO_PEC);
   if (st != HAL_OK) {
-    logprintf("PM_SMBUS_WriteReg16(%p, %x, %x, %x): Bad HAL response %u from HAL_SMBUS_Master_Transmit_IT\n", pCtx->Instance, deviceAddr, regAddr, regValue, st);
+    logprintf("%s(%p, %x, %x, %x): Bad HAL response %u from HAL_SMBUS_Master_Transmit_IT\n", __func__, pCtx->Instance, deviceAddr, regAddr, regValue, st);
     return PM_SMBUS_ResetBus(pCtx);
   }
 
   if (!PM_SMBUS_WaitForReady(pCtx)) {
-    logprintf("PM_SMBUS_WriteReg16(%p, %x, %x, %x): Timed out waiting for device to become ready after write (state = %x)\n",
-      pCtx->Instance, deviceAddr, regAddr, regValue, HAL_SMBUS_GetState(pCtx));
+    logprintf("%s(%p, %x, %x, %x): Timed out waiting for device to become ready after write (state = %x)\n",
+      __func__, pCtx->Instance, deviceAddr, regAddr, regValue, HAL_SMBUS_GetState(pCtx));
+    return PM_SMBUS_ResetBus(pCtx);
+  }
+
+  if (pCtx->ErrorCode != HAL_SMBUS_ERROR_NONE) {
+    logprintf("%s(%p, %x, %x, %x): Error %x after write\n",
+      __func__, pCtx->Instance, deviceAddr, regAddr, regValue, pCtx->ErrorCode);
     return PM_SMBUS_ResetBus(pCtx);
   }
 
@@ -110,7 +116,7 @@ bool PM_SMBUS_WriteReg16(SMBUS_HandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t 
 bool PM_SMBUS_ReadReg16(SMBUS_HandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t regAddr, uint16_t& outValue) {
 
   if (!PM_SMBUS_WaitForReady(pCtx)) {
-    logprintf("PM_SMBUS_ReadReg16(%p, %x, %x): Device not ready -- state = %x (before start)\n", pCtx->Instance, deviceAddr, regAddr, HAL_SMBUS_GetState(pCtx));
+    logprintf("%s(%p, %x, %x): Device not ready -- state = %x (before start)\n", __func__, pCtx->Instance, deviceAddr, regAddr, HAL_SMBUS_GetState(pCtx));
     return PM_SMBUS_ResetBus(pCtx);
   }
 
@@ -121,14 +127,19 @@ bool PM_SMBUS_ReadReg16(SMBUS_HandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t r
   uint8_t txData[] = { regAddr };
   st = HAL_SMBUS_Master_Transmit_IT(pCtx, deviceAddr, txData, sizeof(txData), SMBUS_FIRST_FRAME);
   if (st != HAL_OK) {
-    logprintf("PM_SMBUS_ReadReg16(%p, %x, %x): Bad HAL response %x from HAL_SMBUS_Master_Transmit_IT\n",
-      pCtx->Instance, deviceAddr, regAddr, st);
+    logprintf("%s(%p, %x, %x): Bad HAL response %x from HAL_SMBUS_Master_Transmit_IT\n",
+      __func__, pCtx->Instance, deviceAddr, regAddr, st);
     return PM_SMBUS_ResetBus(pCtx);
   }
 #if 1
   if (!PM_SMBUS_WaitForReady(pCtx)) {
-    logprintf("PM_SMBUS_ReadReg16(%p, %x, %x): Timed out with state %x waiting for device to become ready after write\n",
-      pCtx->Instance, deviceAddr, regAddr, HAL_SMBUS_GetState(pCtx));
+    logprintf("%s(%p, %x, %x): Timed out with state %x waiting for device to become ready after write\n",
+      __func__, pCtx->Instance, deviceAddr, regAddr, HAL_SMBUS_GetState(pCtx));
+    return PM_SMBUS_ResetBus(pCtx);
+  }
+  if (pCtx->ErrorCode != HAL_SMBUS_ERROR_NONE) {
+    logprintf("%s(%p, %x, %x): Error %x after write\n",
+      __func__, pCtx->Instance, deviceAddr, regAddr, pCtx->ErrorCode);
     return PM_SMBUS_ResetBus(pCtx);
   }
 #else
@@ -137,13 +148,19 @@ bool PM_SMBUS_ReadReg16(SMBUS_HandleTypeDef* pCtx, uint8_t deviceAddr, uint8_t r
 
   st = HAL_SMBUS_Master_Receive_IT(pCtx, deviceAddr | 1, (uint8_t*) &outValue, sizeof(outValue), SMBUS_LAST_FRAME_NO_PEC);
   if (st != HAL_OK) {
-    logprintf("PM_SMBUS_ReadReg16(%p, %x, %x): Bad HAL response %x from HAL_SMBUS_Master_Receive_IT\n", pCtx->Instance, deviceAddr, regAddr, st);
+    logprintf("%s(%p, %x, %x): Bad HAL response %x from HAL_SMBUS_Master_Receive_IT\n", __func__, pCtx->Instance, deviceAddr, regAddr, st);
     return PM_SMBUS_ResetBus(pCtx);
   }
 
   if (!PM_SMBUS_WaitForReady(pCtx)) {
-    logprintf("PM_SMBUS_ReadReg16(%p, %x, %x): Timed out with state %x waiting for device to become ready after read\n",
-      pCtx->Instance, deviceAddr, regAddr, HAL_SMBUS_GetState(pCtx));
+    logprintf("%s(%p, %x, %x): Timed out with state %x waiting for device to become ready after read\n",
+      __func__, pCtx->Instance, deviceAddr, regAddr, HAL_SMBUS_GetState(pCtx));
+    return PM_SMBUS_ResetBus(pCtx);
+  }
+
+  if (pCtx->ErrorCode != HAL_SMBUS_ERROR_NONE) {
+    logprintf("%s(%p, %x, %x): Error %x after read\n",
+      __func__, pCtx->Instance, deviceAddr, regAddr, pCtx->ErrorCode);
     return PM_SMBUS_ResetBus(pCtx);
   }
 
