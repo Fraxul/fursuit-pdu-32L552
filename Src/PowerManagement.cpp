@@ -5,6 +5,7 @@
 #include <cmsis_os.h>
 #include "mp2760_registers.h"
 #include "max17320_registers.h"
+#include "adc.h"
 #include "i2c.h"
 #include "log.h"
 #include <stdlib.h>
@@ -17,6 +18,8 @@ extern "C" {
   struct InputPowerState_t inputPowerState;
   struct SystemPowerState_t systemPowerState;
 }
+
+// #define SMBUS_DEBUG_LOG_SUCCESSFUL_WRITES
 
 #define MP2760_ADDR 0x10
 
@@ -71,17 +74,32 @@ bool MP2760_InitDefaults() {
   }
 
   // Readback registers for verification
+  bool readbackOK = true;
   for (uint8_t regIdx = 0; regIdx < mp2760_defaultConfig_length; ++regIdx) {
     uint16_t readValue;
     if (!PM_SMBUS_ReadReg16(MP2760_pCTX, MP2760_ADDR, mp2760_defaultConfig[regIdx].id, readValue))
       return false;
 
-    if (readValue != mp2760_defaultConfig[regIdx].value) {
+    uint16_t compareValue = mp2760_defaultConfig[regIdx].value;
+    if (mp2760_defaultConfig[regIdx].id == 0xe) {
+      // REG0E bit 8 is ADC status which will be forced to 1 if DC/DC converter is enabled. Bits 9-15 are reserved.
+      // Don't treat a mismatch on those bits as a comparison failure.
+      readValue = readValue & 0xff;
+      compareValue = compareValue & 0xff;
+    }
+
+    if (readValue != compareValue) {
       logprintf("MP2760_InitDefaults: Register 0x%02x mismatch after write: expected 0x%02x, got 0x%02x\n",
-        mp2760_defaultConfig[regIdx].id, mp2760_defaultConfig[regIdx].value, readValue);
+        mp2760_defaultConfig[regIdx].id, compareValue, readValue);
+      readbackOK = false;
+#ifdef SMBUS_DEBUG_LOG_SUCCESSFUL_WRITES
+    } else {
+      logprintf("MP2760_InitDefaults: Register 0x%02x write OK: 0x%02x\n",
+        mp2760_defaultConfig[regIdx].id, readValue);
+#endif
     }
   }
-  return true;
+  return readbackOK;
 }
 
 bool MAX17320_SetWriteProtect(bool locked) {
@@ -95,6 +113,17 @@ bool MAX17320_InitDefaults() {
   // These can be saved to its nonvolatile storage, but the IC has a very limited number
   // of write cycles -- it can only be updated 7 times.
 
+  uint16_t idVal = 0;
+  if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0x21, idVal)) {
+    logprintf("%s: IDCode read failure\n", __FUNCTION__);
+    return false;
+  }
+
+  if (idVal != 0x4209 && idVal != 0x420a) {
+    logprintf("%s: IDCode mismatch: expected 0x4209 or 0x420a, got %04x\n", __FUNCTION__, idVal);
+    return false;
+  }
+
   bool configRegionDirty = false;
 
   for (uint8_t regIdx = 0; regIdx < max17320_defaultConfig_length; ++regIdx) {
@@ -106,8 +135,12 @@ bool MAX17320_InitDefaults() {
       return false;
     }
 
-    if (value == reg.value)
+    if (value == reg.value) {
+#ifdef SMBUS_DEBUG_LOG_SUCCESSFUL_WRITES
+      logprintf("%s: NV reg OK: %03x == %04x\n", __FUNCTION__, reg.id, value);
+#endif
       continue; // match OK
+    }
 
     if (reg.id >= 0x1a0 && reg.id <= 0x1af) {
       // This is in the learning region.
@@ -137,6 +170,7 @@ bool MAX17320_InitDefaults() {
     }
     if (!PM_SMBUS_WriteReg16(MAX17320_pCTX, MAX17320_BANK1, reg.id & 0xff, reg.value)) {
       logprintf("%s: Write failure at %03x\n", __FUNCTION__, reg.id);
+      return false;
     }
   }
 
@@ -146,19 +180,57 @@ bool MAX17320_InitDefaults() {
   // 2: Write 0x8000 to Config2 register 0x0AB to reset IC fuel gauge operation.
   if (!PM_SMBUS_WriteReg16(MAX17320_pCTX, MAX17320_BANK0, 0xab, 0x8000)) {
     logprintf("%s: Failed to issue reset command\n", __FUNCTION__);
+    return false;
   }
 
   // 3: Wait for POR_CMD bit(bit 15) of the Config2 register to be cleared to indicate that the POR sequence is complete.
 
+  bool por_finished = false;
   for (int i = 0; i < 100; ++i) {
     uint16_t value = 0;
-    if (PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0xab, value) && ((value & 0x8000) == 0))
+    if (PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0xab, value) && ((value & 0x8000) == 0)) {
+      por_finished = true;
       break;
+    }
     vTaskDelay(pdMS_TO_TICKS(10));
   }
 
+  if (!por_finished) {
+    logprintf("%s: Failed to issue reset command\n", __FUNCTION__);
+    return false;
+  }
+
   // 4. Lock write-protect
-  return MAX17320_SetWriteProtect(true);
+  if (!MAX17320_SetWriteProtect(true)) {
+    logprintf("%s: Failed to set write protect flags\n", __FUNCTION__);
+    return false;
+  }
+
+  // Compare the registers again
+  bool compareOK = true;
+  for (uint8_t regIdx = 0; regIdx < max17320_defaultConfig_length; ++regIdx) {
+    const MAX17320_Register& reg = max17320_defaultConfig[regIdx];
+
+    uint16_t value = 0;
+    if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK1, reg.id & 0xff, value)) {
+      logprintf("%s: Read failure at %03x\n", __FUNCTION__, reg.id);
+      return false;
+    }
+
+    if (value == reg.value) {
+      continue;
+    }
+
+    if (reg.id >= 0x1a0 && reg.id <= 0x1af) {
+      // This is in the learning region.
+      // The fuel gauge writes to these registers internally as it characterizes the pack;
+      // we should avoid clobbering them.
+    } else {
+      logprintf("%s: NV reg %03x is %04x, should be %04x -- write failed\n", __FUNCTION__, reg.id, value, reg.value);
+      compareOK = false;
+    }
+  }
+  return compareOK;
 }
 
 bool MP2760_UpdateSystemPowerState() {
@@ -272,11 +344,33 @@ void Task_PowerManagement(void*) {
   logprintf("Task_PowerManagement: Start\n");
   memset(&systemPowerState, 0, sizeof(systemPowerState));
 
-  if (!MP2760_InitDefaults()) {
 
-    logprintf("Task_PowerManagement: Could not initialize MP2760 charger!\n");
+  {
+    bool max17320_ok = false;
+    bool mp2760_ok = false;
+    while (true) {
+      if (!max17320_ok) {
+        max17320_ok = MAX17320_InitDefaults();
 
-    vTaskSuspend(nullptr); // Stop this task for debugging.
+        if (max17320_ok)
+          logprintf("Task_PowerManagement: MAX17320 fuel gauge init OK\n");
+        else
+          logprintf("Task_PowerManagement: Could not initialize MAX17320 fuel gauge!\n");
+      }
+
+      if (!mp2760_ok) {
+        mp2760_ok = MP2760_InitDefaults();
+
+        if (mp2760_ok)
+          logprintf("Task_PowerManagement: MP2760 charger init OK\n");
+        else
+          logprintf("Task_PowerManagement: Could not initialize MP2760 charger!\n");
+      }
+
+      if (max17320_ok && mp2760_ok)
+        break;
+      vTaskDelay(pdMS_TO_TICKS(5000));
+    }
   }
 
   // Set up for the basic USB power limit.
@@ -288,16 +382,15 @@ void Task_PowerManagement(void*) {
   inputPowerState.maxCurrent_mA = 500;
   inputPowerState.maxPower_mW = 2500;
 
-  if (!MAX17320_InitDefaults()) {
-    logprintf("Task_PowerManagement: Could not initialize MAX17320 fuel gauge!\n");
-    vTaskSuspend(nullptr);
-  }
+
 
   logprintf("Task_PowerManagement: InitDefaults() done\n");
 
   bool inputPowerWasPreviouslyOn = false;
 
   while (true) {
+    // logprintf("PM: 5V_Sense=%u mv Disp5V_Sense=%u mv VBUS=%u mv\n", ADC_read_5V_Sense(), ADC_read_Disp5V_Sense(), ADC_read_TC_VBUS_Sense());
+
     // Always update system power state every tick.
     MAX17320_UpdateSystemPowerState();
     MP2760_UpdateSystemPowerState();
