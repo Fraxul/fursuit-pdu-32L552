@@ -7,7 +7,7 @@
 0000	0	0B	11	REG0B	3080	12416	
 0000	0	0C	12	REG0C	3410	13328	
 0000	0	0D	13	REG0D	F399	62361	
-0000	0	0E	14	REG0E	0010	16	
+0000	0	0E	14	REG0E	0090	144	
 0000	0	0F	15	REG0F	F241	62017	
 0000	0	10	16	REG10	067E	1662	
 0000	0	11	17	REG11	60E8	24808	
@@ -39,7 +39,7 @@ END
 **** Configuration file: MP2760GVT-XXXX	
 **** Package: FCQFN30 4 *5	
 **** Soft rev: 1.4.0.0 (Build: 2022-05-30 15:36:53)	
-**** Date: 05/27/2023	
+**** Date: 05/30/2023	
 **** 	
 **** 	
 ******************** Registers(Config) *************************	
@@ -76,7 +76,7 @@ END
 **** REG0D[8]:NTC_Action=1-INT and JEITA action	
 **** REG0D[9]:NTC Protection Enable=1-Enable	
 **** REG0E[6:4]:PWM Frequency=600	
-**** REG0E[7]:ADC Conversion Behavior=0-One-shot Conversion	
+**** REG0E[7]:ADC Conversion Behavior=1-Continuous Conversion	
 **** REG0E[8]:ADC Conversion One-shot Enable=0-Disable ADC	
 **** REG0F[11:8]:Trickle Charge Current=100	
 **** REG0F[14:12]:Thermal Loop Temperature Threshold=111-120?C	

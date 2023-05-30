@@ -259,6 +259,18 @@ bool MP2760_UpdateSystemPowerState() {
     return false;
   systemPowerState.chargeCurrent_mA = ((value & 0x3ffU) * 25U) >> 1; // 12.5 mA/LSB.
 
+  // REG2A, ADC Junction Temperature
+  if (!PM_SMBUS_ReadReg16(MP2760_pCTX, MP2760_ADDR, 0x2a, value))
+    return false;
+  value &= 0x3ffU;
+  // Junction Temperature read occasionally returns 0 -- just ignore those samples.
+  if (value != 0) {
+    // TJ = 314 - 0.5703 x REG2Ah
+    // scaled by 2048 for fixed-point math:
+    // (314*2048) - ((0.5703*2048) * REG2Ah)) / 2048
+    systemPowerState.chargerTJ_degC = (643072U - (value  * 1168U)) / 2048;
+  }
+
   return true;
 }
 

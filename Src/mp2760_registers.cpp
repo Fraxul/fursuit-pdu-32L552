@@ -1,6 +1,6 @@
 #include "mp2760_registers.h"
 
-// Automatically generated from MP2760GVT-XXXX.txt on Sat May 27 22:25:13 2023
+// Automatically generated from MP2760GVT-XXXX.txt on Tue May 30 15:49:16 2023
 
 const MP2760_Register mp2760_defaultConfig[] = {
   // REG05[9]:Watchdog Timer Setting when Input Absent=0-Disable
@@ -43,9 +43,9 @@ const MP2760_Register mp2760_defaultConfig[] = {
   // REG0D[9]:NTC Protection Enable=1-Enable
   { .id = 0xd, .value = 0xf399 },
   // REG0E[6:4]:PWM Frequency=600
-  // REG0E[7]:ADC Conversion Behavior=0-One-shot Conversion
+  // REG0E[7]:ADC Conversion Behavior=1-Continuous Conversion
   // REG0E[8]:ADC Conversion One-shot Enable=0-Disable ADC
-  { .id = 0xe, .value = 0x10 },
+  { .id = 0xe, .value = 0x90 },
   // REG0F[11:8]:Trickle Charge Current=100
   // REG0F[14:12]:Thermal Loop Temperature Threshold=111-120?C
   // REG0F[15]:Thermal loop Enable=1-Enable

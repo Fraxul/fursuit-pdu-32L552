@@ -47,6 +47,8 @@ void Task_Display(void* unused) {
       ssd1306_lineprintf(1, ""); // clear input state line
     }
 
+    ssd1306_lineprintf(2, "BAT %dC CHG %dC", systemPowerState.batteryTemperature_degC, systemPowerState.chargerTJ_degC);
+
     if (systemPowerState.timeToEmpty_seconds != 0 && systemPowerState.timeToEmpty_seconds != 0xffff) {
       int minutes = systemPowerState.timeToEmpty_seconds / 60;
       int seconds = systemPowerState.timeToEmpty_seconds - (minutes * 60);

@@ -33,6 +33,7 @@ struct SystemPowerState_t {
   uint16_t chargerPowerInput_mV;
   uint16_t chargerPowerInput_mA;
   uint16_t chargeCurrent_mA;
+  uint16_t chargerTJ_degC;
 };
 
 
