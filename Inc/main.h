@@ -86,8 +86,6 @@ void Error_Handler(void);
 #define UCPD_DBN_GPIO_Port GPIOB
 #define UCPD_FLT_Pin LL_GPIO_PIN_8
 #define UCPD_FLT_GPIO_Port GPIOA
-#define UCPD_DBNB5_Pin LL_GPIO_PIN_5
-#define UCPD_DBNB5_GPIO_Port GPIOB
 #define LED_Pin LL_GPIO_PIN_3
 #define LED_GPIO_Port GPIOH
 

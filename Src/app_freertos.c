@@ -73,6 +73,7 @@ DECLARE_TASK(USB_Tx, 128);
 DECLARE_TASK(Shell, 256);
 DECLARE_TASK(PowerManagement, 192);
 DECLARE_TASK(Display, 192);
+DECLARE_TASK(WS2812, 192);
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -212,6 +213,7 @@ void MX_FREERTOS_Init(void) {
   START_TASK(USB_Tx, osPriorityHigh);
   START_TASK(PowerManagement, osPriorityNormal);
   START_TASK(Display, osPriorityNormal);
+  START_TASK(WS2812, osPriorityNormal);
 
   /* USER CODE END RTOS_THREADS */
 
