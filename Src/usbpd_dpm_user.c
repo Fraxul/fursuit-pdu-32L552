@@ -288,6 +288,21 @@ void USBPD_DPM_Notification(uint8_t PortNum, USBPD_NotifyEventValue_TypeDef Even
       inputPowerState.isReady = 1;
       PM_NotifyInputPowerStateUpdated();
       break;
+
+    case USBPD_NOTIFY_POWER_STATE_CHANGE:
+      DPM_USER_DEBUG_TRACE(PortNum, "NOTIFY_POWER_STATE_CHANGE");
+      xTimerStop(hardResetTimer, portMAX_DELAY);
+      inputPowerState.isReady = 1;
+      PM_NotifyInputPowerStateUpdated();
+      break;
+
+    case USBPD_NOTIFY_PE_DISABLED:
+      DPM_USER_DEBUG_TRACE(PortNum, "NOTIFY_PE_DISABLED");
+      xTimerStop(hardResetTimer, portMAX_DELAY);
+      inputPowerState.isReady = 0;
+      PM_NotifyInputPowerStateUpdated();
+      break;
+
 //    case USBPD_NOTIFY_HARDRESET_RX:
 //    case USBPD_NOTIFY_HARDRESET_TX:
 //      break;
@@ -326,8 +341,10 @@ void USBPD_DPM_Notification(uint8_t PortNum, USBPD_NotifyEventValue_TypeDef Even
 void USBPD_DPM_HardReset(uint8_t PortNum, USBPD_PortPowerRole_TypeDef CurrentRole, USBPD_HR_Status_TypeDef Status)
 {
 /* USER CODE BEGIN USBPD_DPM_HardReset */
-  DPM_USER_DEBUG_TRACE(PortNum, "Hard reset received, disconnecting power.");
+  DPM_USER_DEBUG_TRACE(PortNum, "Hard reset received, disconnecting power. CurrentRole=%u Status=%u", CurrentRole, Status);
   PM_DisconnectPower();
+
+  USBPD_DPM_RequestGotoMin(PortNum);
 /* USER CODE END USBPD_DPM_HardReset */
 }
 
