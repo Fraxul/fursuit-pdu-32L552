@@ -34,6 +34,9 @@ struct SystemPowerState_t {
   uint16_t chargerPowerInput_mA;
   uint16_t chargeCurrent_mA;
   uint16_t chargerTJ_degC;
+
+  // State machine
+  uint8_t poweroffRequested;
 };
 
 
@@ -42,6 +45,8 @@ extern struct SystemPowerState_t systemPowerState;
 
 void PM_NotifyInputPowerStateUpdated();
 void PM_DisconnectPower(); // Shortcut for setting isReady = 0 and notifying state update
+
+void PM_RequestPowerOff();
 
 void PM_Shell_DumpPowerStats();
 

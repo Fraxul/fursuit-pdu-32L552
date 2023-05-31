@@ -49,6 +49,10 @@ void PM_NotifyInputPowerStateUpdated() {
   inputPowerStateUpdated = true;
 }
 
+void PM_RequestPowerOff() {
+  systemPowerState.poweroffRequested = 1;
+}
+
 bool MP2760_SetPowerInputEnabled(bool enabled) {
   // Turns charging and the DC/DC converter on or off.
   // REG12 (Configuration Register 4)
@@ -408,6 +412,49 @@ void Task_PowerManagement(void*) {
     MP2760_UpdateSystemPowerState();
 
     vTaskDelay(pdMS_TO_TICKS(1000));
+
+    if (systemPowerState.poweroffRequested) {
+      logprintf("Task_PowerManagement: Power off requested.\n");
+
+      bool ok = true;
+      do {
+        {
+          // Configure MP2760 for power off: Disable charging and the DC/DC converter.
+          // REG12 (Configuration Register 4)
+          // bit 6: DC/DC_EN -- Enable (1) or disable (0) the DC/DC converter.
+          // bit 0: CHG_EN -- Enable (1) or disable (0) battery charging.
+          const uint16_t bits = 0b0100'0001;
+          ok &= PM_SMBUS_RMWReg16(MP2760_pCTX, MP2760_ADDR, 0x12, ~(bits), 0);
+        }
+
+        // Request MAX17320 to enter SHIP mode.
+        {
+          // Config register (0x00B)
+          // Bit 10: Pushbutton wake enable
+          // Bit  7: Force-enter SHIP mode (after nDelayCfg.UVPTimer expires)
+          const uint16_t configBits = 0b0000'0100'1000'0000;
+          ok &= PM_SMBUS_RMWReg16(MAX17320_pCTX, MAX17320_BANK0, 0x0b, /*mask=*/ 0xffff, /*toSet=*/ configBits);
+        }
+      } while (!ok);
+
+      // Shut down the SMBUS link connected to the MAX17320 -- otherwise, it'll assume that the
+      // system is still up and prevent entering ship mode.
+      HAL_SMBUS_MspDeInit(MAX17320_pCTX);
+
+      LL_GPIO_InitTypeDef pinCfg = {0};
+      pinCfg.Pin = LL_GPIO_PIN_13 | LL_GPIO_PIN_14; // PB13/PB14 - I2C2
+      pinCfg.Mode = LL_GPIO_MODE_OUTPUT;
+      pinCfg.Speed = LL_GPIO_SPEED_FREQ_LOW;
+      pinCfg.Pull = LL_GPIO_PULL_NO;
+      pinCfg.OutputType = LL_GPIO_OUTPUT_OPENDRAIN;
+      LL_GPIO_Init(GPIOB, &pinCfg);
+      LL_GPIO_ResetOutputPin(GPIOB, pinCfg.Pin);
+
+      logprintf("Task_PowerManagement: SMBUS shutdown, waiting for MAX17320 to enter SHIP mode.\n");
+
+      vTaskSuspend(nullptr); // won't return after this -- power should be turned off.
+    }
+
     if (inputPowerStateUpdated) {
       // Notification received -- update the charger.
       inputPowerStateUpdated = false;

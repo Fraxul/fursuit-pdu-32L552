@@ -4,6 +4,7 @@
 #include "main.h"
 #include "WS2812Driver.h"
 #include "EyeRenderer.h"
+#include "PowerManagement.h"
 #include "adc.h"
 #include "eye_layout.h"
 #include "FreeRTOS.h"
@@ -411,6 +412,17 @@ extern "C" __attribute__((optimize("-Os"))) void Task_WS2812() {
 														ULONG_MAX,					 /* Clear all bits on exit. */
 														&ulInterruptStatus, /* Receives the notification value. */
 														portMAX_DELAY);		 /* Block indefinitely. */
+
+
+		if (systemPowerState.poweroffRequested) {
+			// Clear the screen, then turn off the display power.
+			clearBuffers();
+			drawPendingFrame();
+			vTaskDelay(pdMS_TO_TICKS(5));
+
+			LL_GPIO_SetOutputPin(nLEDPwrEnable_GPIO_Port, nLEDPwrEnable_Pin); // Power off
+			vTaskSuspend(nullptr);
+		}
 
 		// Submit the current frame. (swaps buffers, so we're ready to draw again)
 		drawPendingFrame();
