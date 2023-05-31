@@ -29,6 +29,7 @@
 #include "stm32l5xx_ll_tim.h"
 #include <stdio.h>
 #include "usbd_cdc_if.h"
+#include "Buttons.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -155,6 +156,9 @@ void vApplicationTickHook( void )
   } else {
     LL_GPIO_ResetOutputPin(LED_GPIO_Port, LED_Pin);
   }
+
+  // Run UI button debouncing and handlers
+  Button_TickHook();
 }
 /* USER CODE END 3 */
 
