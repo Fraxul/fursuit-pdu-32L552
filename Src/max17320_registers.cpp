@@ -1,6 +1,6 @@
 #include "max17320_registers.h"
 
-// Automatically generated from MAX17320_Config.INI on Sun May 28 01:54:45 2023
+// Automatically generated from MAX17320_Config.INI on Wed May 31 17:40:07 2023
 
 const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x180, .value = 0x00 }, // nXTable0 Register
@@ -71,7 +71,7 @@ const MAX17320_Register max17320_defaultConfig[] = {
   { .id = 0x1c7, .value = 0x00 }, // nTTFCFG Register
   { .id = 0x1c8, .value = 0x4000 }, // nCGAIN Register
   { .id = 0x1c9, .value = 0x00 }, // nCGTempCo Register
-  { .id = 0x1ca, .value = 0x71be }, // nThermCfg Register
+  { .id = 0x1ca, .value = 0x91c3 }, // nThermCfg Register
   { .id = 0x1cc, .value = 0x00 }, // nManfctrName Register
   { .id = 0x1cd, .value = 0x00 }, // nManfctrName1 Register
   { .id = 0x1ce, .value = 0x00 }, // nManfctrName2 Register

@@ -1,7 +1,7 @@
 #pragma once
 #include <stdint.h>
 
-// Automatically generated from MAX17320_Config.INI on Sun May 28 01:54:45 2023
+// Automatically generated from MAX17320_Config.INI on Wed May 31 17:40:07 2023
 
 struct MAX17320_Register {
   uint16_t id;
