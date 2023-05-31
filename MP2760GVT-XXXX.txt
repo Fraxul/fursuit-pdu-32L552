@@ -3,12 +3,12 @@
 0000	0	07	7	REG07	0037	55	
 0000	0	08	8	REG08	000A	10	
 0000	0	09	9	REG09	00F9	249	
-0000	0	0A	10	REG0A	1028	4136	
+0000	0	0A	10	REG0A	0A28	2600	
 0000	0	0B	11	REG0B	3080	12416	
 0000	0	0C	12	REG0C	3410	13328	
 0000	0	0D	13	REG0D	F399	62361	
 0000	0	0E	14	REG0E	0090	144	
-0000	0	0F	15	REG0F	F241	62017	
+0000	0	0F	15	REG0F	B241	45633	
 0000	0	10	16	REG10	067E	1662	
 0000	0	11	17	REG11	60E8	24808	
 0000	0	12	18	REG12	3C72	15474	
@@ -39,7 +39,7 @@ END
 **** Configuration file: MP2760GVT-XXXX	
 **** Package: FCQFN30 4 *5	
 **** Soft rev: 1.4.0.0 (Build: 2022-05-30 15:36:53)	
-**** Date: 05/30/2023	
+**** Date: 05/31/2023	
 **** 	
 **** 	
 ******************** Registers(Config) *************************	
@@ -52,8 +52,8 @@ END
 **** REG09[10]:SRC Output Voltage Configuration=0-By register bit	
 **** REG09[11]:SRC Output Voltage Offset=0	
 **** REG09[9:0]:SRC Output Voltage=4980	
-**** REG0A[10:8]:Voltage Compensation Limit=0	
-**** REG0A[13:11]:Battery Impedance=100	
+**** REG0A[10:8]:Voltage Compensation Limit=120	
+**** REG0A[13:11]:Battery Impedance=50	
 **** REG0A[6:0]:SRC Ouput Current Limit=2000	
 **** REG0B[10:9]:Battery Low Voltage Threshold=12	
 **** REG0B[11]:DC/DC Action when Battery Low Voltage=0-INT	
@@ -79,7 +79,7 @@ END
 **** REG0E[7]:ADC Conversion Behavior=1-Continuous Conversion	
 **** REG0E[8]:ADC Conversion One-shot Enable=0-Disable ADC	
 **** REG0F[11:8]:Trickle Charge Current=100	
-**** REG0F[14:12]:Thermal Loop Temperature Threshold=111-120?C	
+**** REG0F[14:12]:Thermal Loop Temperature Threshold=011-100?C	
 **** REG0F[15]:Thermal loop Enable=1-Enable	
 **** REG0F[3:0]:Termination Current=50	
 **** REG0F[7:4]:Pre-charge Current=400	

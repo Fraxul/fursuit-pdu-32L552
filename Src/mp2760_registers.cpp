@@ -1,6 +1,6 @@
 #include "mp2760_registers.h"
 
-// Automatically generated from MP2760GVT-XXXX.txt on Tue May 30 15:49:16 2023
+// Automatically generated from MP2760GVT-XXXX.txt on Wed May 31 13:44:42 2023
 
 const MP2760_Register mp2760_defaultConfig[] = {
   // REG05[9]:Watchdog Timer Setting when Input Absent=0-Disable
@@ -15,10 +15,10 @@ const MP2760_Register mp2760_defaultConfig[] = {
   // REG09[11]:SRC Output Voltage Offset=0
   // REG09[9:0]:SRC Output Voltage=4980
   { .id = 0x9, .value = 0xf9 },
-  // REG0A[10:8]:Voltage Compensation Limit=0
-  // REG0A[13:11]:Battery Impedance=100
+  // REG0A[10:8]:Voltage Compensation Limit=120
+  // REG0A[13:11]:Battery Impedance=50
   // REG0A[6:0]:SRC Ouput Current Limit=2000
-  { .id = 0xa, .value = 0x1028 },
+  { .id = 0xa, .value = 0xa28 },
   // REG0B[10:9]:Battery Low Voltage Threshold=12
   // REG0B[11]:DC/DC Action when Battery Low Voltage=0-INT
   // REG0B[12]:Pre-charge Threshold=12
@@ -47,11 +47,11 @@ const MP2760_Register mp2760_defaultConfig[] = {
   // REG0E[8]:ADC Conversion One-shot Enable=0-Disable ADC
   { .id = 0xe, .value = 0x90 },
   // REG0F[11:8]:Trickle Charge Current=100
-  // REG0F[14:12]:Thermal Loop Temperature Threshold=111-120?C
+  // REG0F[14:12]:Thermal Loop Temperature Threshold=011-100?C
   // REG0F[15]:Thermal loop Enable=1-Enable
   // REG0F[3:0]:Termination Current=50
   // REG0F[7:4]:Pre-charge Current=400
-  { .id = 0xf, .value = 0xf241 },
+  { .id = 0xf, .value = 0xb241 },
   // REG10[10:9]:Battery Cell Count=4
   // REG10[11]:Recharge Threshold=100
   // REG10[12]:TS/IMON Pin Function=0-TS
