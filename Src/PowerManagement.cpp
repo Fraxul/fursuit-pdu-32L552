@@ -17,6 +17,7 @@ extern TaskHandle_t PowerManagementHandle;
 extern "C" {
   struct InputPowerState_t inputPowerState;
   struct SystemPowerState_t systemPowerState;
+  FanState_t fan[kFanCount];
 }
 
 // #define SMBUS_DEBUG_LOG_SUCCESSFUL_WRITES
@@ -26,8 +27,11 @@ extern "C" {
 #define MAX17320_BANK0 0x6C // addr 0x000 - 0x0ff via I2C access
 #define MAX17320_BANK1 0x16 // addr 0x100 - 0x17f via SMBus access (SBS protocol); addr 0x180 - 0x1ff via I2C access (NV memory bank)
 
+#define EMC2302_ADDR (0x2e << 1) // EMC2302-1 is 0x2e, EMC2302-2 is 0x2f
+
 #define MAX17320_pCTX &hsmbus2
 #define MP2760_pCTX &hsmbus2
+#define EMC2302_pCTX &hsmbus2
 
 void PM_DisconnectPower() {
   inputPowerState.isReady = 0;
@@ -331,6 +335,65 @@ bool MAX17320_UpdateSystemPowerState() {
   return true;
 }
 
+bool EMC2302_Init() {
+  bzero(fan, sizeof(FanState_t) * kFanCount);
+
+  // Wait for EMC2302 to start responding
+  uint16_t tmp = 0;
+  const uint16_t emc2302_id = 0x5d36U;
+  if (!PM_SMBUS_ReadReg16(EMC2302_pCTX, EMC2302_ADDR, 0xfd, tmp))
+    return false;
+
+  if (tmp != emc2302_id) {
+    logprintf("EMC2302_Init: Bad IDcode returned: expected %x, got %x\n", emc2302_id, tmp);
+    return false;
+  }
+
+
+  PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, 0x20, 0b10000000); // disable ALERT, enable SMBus timeout, powerup watchdog only, no tach clock out, use internal oscillator
+
+  uint8_t fanConfig1 = 0b00001011; // RPM algo disabled, RANGE = 1x, EDGES = 2 (default), update time = 400ms (default)
+  uint8_t fanConfig2 = 0b01101000; // Ramp rate control enabled, glitch filter enabled (default), basic derivative (default), error range = 0 RPM (default)
+  uint8_t fanMinDrive = 0x33; // 20% minimum PWM drive (0.2 * 255)
+
+  for (int fanIdx = 0; fanIdx < 2; ++fanIdx) {
+    fan[fanIdx].pwmDrive = 0x33; // 20% default
+
+    // Fan base addresses are {0x30, 0x40}
+    PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x32, fanConfig1); // Configuration 1
+    PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x33, fanConfig2); // Configuration 2
+    PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x38, fanMinDrive); // Min Drive
+
+    PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x30, fan[fanIdx].pwmDrive); // PWM drive percentage
+  }
+
+  return true;
+}
+
+void EMC2302_Update() {
+  uint8_t status[4];
+  PM_SMBUS_ReadMem(EMC2302_pCTX, EMC2302_ADDR, /*addr=*/ 0x25, status, 3);
+  fan[0].stalled = status[0] & 1;
+  fan[1].stalled = status[0] & 2;
+  fan[0].spinupFailure = status[1] & 1;
+  fan[1].spinupFailure = status[1] & 2;
+  fan[0].driveFailure = status[2] & 1;
+  fan[1].driveFailure = status[2] & 2;
+
+  // Tachometer reading. Magic constant division to get RPM is described in the EMC2302 datasheet.
+  for (int fanIdx = 0; fanIdx < 2; ++fanIdx) {
+    uint16_t tach;
+    PM_SMBUS_ReadReg16(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x3e, tach);
+
+    tach = tach >> 3; // Right-shift by 3 because the data is MSB-aligned and there are only 13 valid bits.
+
+    if (tach >= 0x1ffe)
+      fan[fanIdx].tachometer = 0; // Counter has maxed out, which probably means that the fan isn't spinning.
+    else
+      fan[fanIdx].tachometer = 3932160UL / tach;
+  }
+}
+
 void PM_Shell_DumpPowerStats() {
   printf("SoC: %u%% (%u mAh)\n", systemPowerState.stateOfCharge_pct, systemPowerState.remainingCapacity_mAH);
   printf("%5u mV    %d mA    %d degC\n", systemPowerState.batteryVoltage_mV, systemPowerState.batteryCurrent_mA, systemPowerState.batteryTemperature_degC);
@@ -398,7 +461,8 @@ void Task_PowerManagement(void*) {
   inputPowerState.maxCurrent_mA = 500;
   inputPowerState.maxPower_mW = 2500;
 
-
+  // EMC2302 init does not block PM task running
+  bool emc2302_ok = EMC2302_Init();
 
   logprintf("Task_PowerManagement: InitDefaults() done\n");
 
@@ -410,6 +474,12 @@ void Task_PowerManagement(void*) {
     // Always update system power state every tick.
     MAX17320_UpdateSystemPowerState();
     MP2760_UpdateSystemPowerState();
+
+    if (emc2302_ok) {
+      EMC2302_Update();
+    } else {
+      emc2302_ok = EMC2302_Init();
+    }
 
     vTaskDelay(pdMS_TO_TICKS(1000));
 

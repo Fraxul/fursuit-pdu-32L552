@@ -39,6 +39,17 @@ struct SystemPowerState_t {
   uint8_t poweroffRequested;
 };
 
+struct FanState_t {
+  uint16_t tachometer; // RPM; 0 if not spinning.
+  uint8_t pwmDrive; // drive strength. 0 is off, 255 is full speed.
+  // status flags
+  uint8_t spinupFailure : 1;
+  uint8_t stalled : 1;
+  uint8_t driveFailure : 1;
+};
+
+#define kFanCount 2
+extern struct FanState_t fan[kFanCount];
 
 extern struct InputPowerState_t inputPowerState;
 extern struct SystemPowerState_t systemPowerState;
