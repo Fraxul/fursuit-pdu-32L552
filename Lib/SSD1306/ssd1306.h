@@ -25,10 +25,10 @@ extern "C" {
 
 // Display dimensions
 #define SSD1306_WIDTH           128
-#define SSD1306_HEIGHT          32
+#define SSD1306_HEIGHT          64
 
 // Display flip Screen
-#define SSD1306_FLIP_SCREEN   0
+#define SSD1306_FLIP_SCREEN   1
 
 // Single character  width
 #define SSD1306_CHAR_WIDTH		6
