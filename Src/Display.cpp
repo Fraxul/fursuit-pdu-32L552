@@ -37,6 +37,7 @@ void ssd1306_lineprintf(uint8_t ypos, const char* fmt, ...) {
 
 enum UISelectionState : int {
   kNoSelection,
+  kToggleWS2812Power,
   kPowerOff,
   kUISelectionStateMax
 };
@@ -58,11 +59,17 @@ void UISelect_LongPress() {
     case kUISelectionStateMax:
       break;
 
+    case kToggleWS2812Power:
+      systemPowerState.ws2812PowerEnabled = !systemPowerState.ws2812PowerEnabled;
+      break;
+
     case kPowerOff:
       PM_RequestPowerOff();
       break;
-
   }
+
+  // clear selection after action
+  uiSelectionState = kNoSelection;
 }
 
 
@@ -75,6 +82,8 @@ void Task_Display(void* unused) {
   Button_SetLongPressHandler(kPowerButton, &UISelect_LongPress);
 
   while (true) {
+    ssd1306_SendConfig();
+
     ssd1306_lineprintf(0, "%3u%% %uMV %dMA", systemPowerState.stateOfCharge_pct, systemPowerState.batteryVoltage_mV, systemPowerState.batteryCurrent_mA);
 
     ssd1306_lineprintf(1, "BAT: %dC  CHG: %dC", systemPowerState.batteryTemperature_degC, systemPowerState.chargerTJ_degC);
@@ -101,6 +110,9 @@ void Task_Display(void* unused) {
         } else {
           ssd1306_lineprintf(3, ""); // clear the runtime-estimate line, since we have no data.
         }
+        break;
+      case kToggleWS2812Power:
+        ssd1306_lineprintf(3, ":: WS2812 %s?", systemPowerState.ws2812PowerEnabled ? "OFF" : "ON");
         break;
       case kPowerOff:
         ssd1306_lineprintf(3, ":: POWER OFF?");

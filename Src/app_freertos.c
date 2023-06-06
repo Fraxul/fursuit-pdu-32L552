@@ -28,8 +28,9 @@
 #include "stream_buffer.h"
 #include "stm32l5xx_ll_tim.h"
 #include <stdio.h>
-#include "usbd_cdc_if.h"
 #include "Buttons.h"
+#include "log.h"
+#include <stdlib.h>
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -74,7 +75,7 @@ DECLARE_TASK(USB_Tx, 128);
 DECLARE_TASK(Shell, 256);
 DECLARE_TASK(PowerManagement, 192);
 DECLARE_TASK(Display, 192);
-DECLARE_TASK(WS2812, 192);
+DECLARE_TASK(WS2812, 256);
 
 /* USER CODE END Variables */
 /* Definitions for defaultTask */
@@ -168,9 +169,8 @@ void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
   /* Run time stack overflow checking is performed if
   configCHECK_FOR_STACK_OVERFLOW is defined to 1 or 2. This hook function is
   called if a stack overflow is detected. */
-  char buf[64];
-  uint32_t len = sprintf(buf, "FATAL: Stack overflow in task %s\n", pcTaskName);
-  while (CDC_Transmit_FS((uint8_t*) buf, len) == USBD_BUSY) {}
+
+  logprintf("FATAL: Stack overflow in task %s\n", pcTaskName);
 
   abort();
 }

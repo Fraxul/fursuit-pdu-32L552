@@ -91,7 +91,8 @@ static uint8_t col, page;
 
 // I2C variables
 static I2C_HandleTypeDef *i2cHandle = NULL;
-static uint8_t i2cBuff[24] = {
+
+static const uint8_t ssd1306_initCmd[] = {
 #if (SSD1306_HEIGHT == 64)
 		0xA8, 0x3F, 		// Set multiplex (HEIGHT-1): 0x3F for 128x64
 		0x22, 0x00, 0x07, 	// Set min and max page:  0x07 for 128x64
@@ -107,16 +108,17 @@ static uint8_t i2cBuff[24] = {
 		0xD5, 0xF0,			// Set display clock divide and frequency set clock to max
 		0x2E,						// Deactivate scroll
 		0xD3, 0x00,			// Set display offset to 0
-		0xA1, 0xC8,			// Flip the screen
-		0x00, 0x00,			// Dummy bytes
-		0x00, 0x00,			// Dummy bytes
-		};
+		0xAF,						// Screen on
+
+		// Flip screen command must be last -- see ssd1306_SendConfig
+		0xA1, 0xC8,			// Flip the screen (optional -- see ssd1306_SendConfig)
+};
 
 
 static volatile TaskHandle_t ssd1306WriteTask;
 
 //  IC2 Write Function
-static void i2cWrite(uint8_t mode, uint8_t *data, uint8_t lenght){
+static void i2cWrite(uint8_t mode, const uint8_t *data, uint8_t lenght){
 
 	ssd1306WriteTask = xTaskGetCurrentTaskHandle();
 	ulTaskNotifyValueClear(ssd1306WriteTask, 0xffffffffUL);
@@ -150,19 +152,26 @@ void ssd1306_Init(I2C_HandleTypeDef *hi2c) {
 	i2cHandle->MemTxCpltCallback = ssd1306_TransactionCompleteCallback;
 	i2cHandle->ErrorCallback = ssd1306_TransactionCompleteCallback;
 
-	// Send the initialization string
-	i2cWrite(SSD1306_I2C_CMD, i2cBuff, SSD1306_INIT_LEN);
+	ssd1306_SendConfig();
 
 	ssd1306_ClearScreen();
 	ssd1306_SetDisplayOnOff(1);
 }
 
+void ssd1306_SendConfig() {
+	// Send the initialization string.
+	// We skip the last 2 command bytes if the screen is not flipped.
+	i2cWrite(SSD1306_I2C_CMD, ssd1306_initCmd, (sizeof(ssd1306_initCmd) - (SSD1306_FLIP_SCREEN ? 0 : 2)));
+}
+
 
 // Clear screen
 void ssd1306_ClearScreen(void) {
-	uint8_t i, blocks;
-	blocks = SSD1306_WIDTH * SSD1306_HEIGHT / 8 / 16;
+	uint8_t i;
+	const uint8_t blocks = SSD1306_WIDTH * SSD1306_HEIGHT / 8 / 16;
 	ssd1306_SetCursor(0, 0);              // Set cursor at upper left corner
+
+	uint8_t i2cBuff[16];
 	for (i = 0; i < 16; i++) {
 		i2cBuff[i] = 0x00;
 	}
@@ -174,6 +183,8 @@ void ssd1306_ClearScreen(void) {
 
 // Print a character
 void ssd1306_WriteChar(char ch, uint8_t fsize) {
+	uint8_t i2cBuff[24];
+
 	uint8_t sliceChar, shifter;
 	uint16_t offsetChar; // calculated position of character in font array
 	uint32_t temp;
@@ -227,23 +238,23 @@ void ssd1306_SetCursor(uint8_t xpos, uint8_t ypos) {
 #else
 	page = ypos & 0x03;				//Prevent rows overflow if 4 rows (32 pixel height)
 #endif
-	i2cBuff[0] = col & 0x0F;		// set low nibble of start column
-	i2cBuff[1] = 0x10 | (col >> 4);	// set high nibble of start column
-	i2cBuff[2] = 0xB0 | page;		// set start page
-	i2cWrite(SSD1306_I2C_CMD, i2cBuff, 3);
+	uint8_t i2cBuff[] = {
+		col & 0x0F,					// set low nibble of start column
+		0x10 | (col >> 4),	// set high nibble of start column
+		0xB0 | page};				// set start page
+	i2cWrite(SSD1306_I2C_CMD, i2cBuff, sizeof(i2cBuff));
 }
 
 
 // Set the display contrast
 void ssd1306_SetContrast(uint8_t contrast) {
-	i2cBuff[0] = 0x81;
-	i2cBuff[1] = contrast;
-	i2cWrite(SSD1306_I2C_CMD, i2cBuff, 2);
+	uint8_t i2cBuff[] = { 0x81, contrast };
+	i2cWrite(SSD1306_I2C_CMD, i2cBuff, sizeof(i2cBuff));
 }
 
 
 // Switch On/Off the display
 void ssd1306_SetDisplayOnOff(uint8_t onOff) {
-	i2cBuff[0] = 0xAE + (onOff & 0x01);
-	i2cWrite(SSD1306_I2C_CMD, i2cBuff, 1);
+	uint8_t i2cBuff[] = { 0xAE + (onOff & 0x01) };
+	i2cWrite(SSD1306_I2C_CMD, i2cBuff, sizeof(i2cBuff));
 }

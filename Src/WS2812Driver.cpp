@@ -9,6 +9,7 @@
 #include "eye_layout.h"
 #include "FreeRTOS.h"
 #include "task.h"
+#include "log.h"
 
 using namespace glm;
 
@@ -260,8 +261,6 @@ public:
 	}
 };
 
-
-uint32_t Disp5V_charge_time_ms = 0;
 extern "C" __attribute__((optimize("-Os"))) void Task_WS2812() {
 	EyeRenderer pattern;
 	//HSVTestPattern pattern;
@@ -277,226 +276,236 @@ extern "C" __attribute__((optimize("-Os"))) void Task_WS2812() {
 	// Stop the DMA timers while debugging
 	LL_DBGMCU_APB1_GRP1_FreezePeriph(LL_DBGMCU_APB1_GRP1_TIM2_STOP | LL_DBGMCU_APB1_GRP1_TIM3_STOP);
 
-	// Ensure that pins are set low when display powers up
-	LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_0 | LL_GPIO_PIN_1 | LL_GPIO_PIN_2 | LL_GPIO_PIN_3 | LL_GPIO_PIN_4 | LL_GPIO_PIN_5 | LL_GPIO_PIN_6 | LL_GPIO_PIN_7);
-
-	// Make sure that the timers are disabled
-	LL_TIM_DisableCounter(TIM2);
-	LL_TIM_DisableCounter(TIM3);
-
-	// Turn off power to display and wait for the Disp5V supply to drain
-	LL_GPIO_SetOutputPin(nLEDPwrEnable_GPIO_Port, nLEDPwrEnable_Pin); // Power off
-	{
-		while (true) {
-			uint32_t mv = ADC_read_Disp5V_Sense();
-			if (mv < 250)
-					break; // power is off.
-			vTaskDelay(pdMS_TO_TICKS(4));
-		}
-	}
-
-	// Settle time post poweroff
-	vTaskDelay(pdMS_TO_TICKS(1000));
-
-	// Wait for the display power rail to settle.
-	// The microcontroller will boot up before the 5V supply is enabled.
-	// We don't want to turn on the display power before the 5V supply has stabilized,
-	// because the inrush limiter won't work correctly.
-	{
-		uint32_t pg_counter = 0;
-		while (true) {
-			uint32_t mv = ADC_read_5V_Sense();
-			if (mv > 4750) {
-				pg_counter += 1;
-				if (pg_counter > 25)
-					break; // power has been good long enough
-			} else {
-				// require continuous power-good samples
-				pg_counter = 0;
-			}
-
-			vTaskDelay(pdMS_TO_TICKS(4));
-		}
-	}
-
-	// Turn on the display power.
-	{
-		uint32_t powerOn_start_time = HAL_GetTick();
-		LL_GPIO_ResetOutputPin(nLEDPwrEnable_GPIO_Port, nLEDPwrEnable_Pin); // Power on
-		uint32_t powerGood_time = powerOn_start_time;
-		uint32_t pg_counter = 0;
-		while (true) {
-			uint32_t mv = ADC_read_Disp5V_Sense();
-
-			if (mv > 4750) {
-				if ((++pg_counter) > 25)
-					break; // stable
-			} else {
-				pg_counter = 0;
-				powerGood_time = HAL_GetTick(); // push the timer forward as long as the power is not good
-			}
-			vTaskDelay(pdMS_TO_TICKS(4));
-  	}
-		Disp5V_charge_time_ms = powerGood_time - powerOn_start_time;
-	}
-
-	clearBuffers();
-
-	vTaskDelay(pdMS_TO_TICKS(100)); // Give the display some extra time to stabilize
-
-	// ws2812StartBits can be updated to mask off channels. by default, all channels are active.
-	ws2812StartStopBits[0] = 0xff; // BSRR 'set' bits
-	ws2812StartStopBits[1] = (ws2812StartStopBits[0]) << 16; // BSRR 'reset' bits
-
-	//set up the 3 stages of DMA triggers on TIM2
-
-	// Fires with TIM2_CH2 -- starts the pulse by writing to the 'set' bits in BSRR.
-	LL_DMA_SetMemoryAddress(DMA2, LL_DMA_CHANNEL_1, (uint32_t) &ws2812StartStopBits[0]);
-	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_CHANNEL_1, (uint32_t) &GPIOB->BSRR);
-	LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_CHANNEL_1, LL_DMA_MEMORY_NOINCREMENT);
-	LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_CHANNEL_1, LL_DMA_PERIPH_NOINCREMENT);
-	LL_DMA_SetMode(DMA2, LL_DMA_CHANNEL_1, LL_DMA_MODE_CIRCULAR);
-	LL_DMA_SetDataLength(DMA2, LL_DMA_CHANNEL_1, 1);
-	LL_DMA_EnableChannel(DMA2, LL_DMA_CHANNEL_1);
-
-	//fires with TIM2_CH3 - set the data bit
-	// This either continues the pulse (for a 1) or turns it into a short pulse (for a 0)
-	// We write inverted bits to BRR to avoid clobbering any other output data on the GPIO port.
-	LL_DMA_SetMemoryAddress(DMA2, LL_DMA_CHANNEL_2, (uint32_t) readBuffer());
-	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_CHANNEL_2, (uint32_t) &GPIOB->BRR);
-	LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_CHANNEL_2, LL_DMA_MEMORY_INCREMENT);
-	LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_CHANNEL_2, LL_DMA_PERIPH_NOINCREMENT);
-	LL_DMA_SetMode(DMA2, LL_DMA_CHANNEL_2, LL_DMA_MODE_CIRCULAR);
-	LL_DMA_SetDataLength(DMA2, LL_DMA_CHANNEL_2, ws2812TransmissionLengthBits());
-	LL_DMA_EnableIT_TC(DMA2, LL_DMA_CHANNEL_2);
-	LL_DMA_EnableChannel(DMA2, LL_DMA_CHANNEL_2);
-
-	// Fires with TIM2_CH4 -- clears the pulse with the 'reset' bits in BSRR.
-	LL_DMA_SetMemoryAddress(DMA2, LL_DMA_CHANNEL_3, (uint32_t) &ws2812StartStopBits[1]);
-	LL_DMA_SetPeriphAddress(DMA2, LL_DMA_CHANNEL_3, (uint32_t)&GPIOB->BSRR);
-	LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_CHANNEL_3, LL_DMA_MEMORY_NOINCREMENT);
-	LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_CHANNEL_3, LL_DMA_PERIPH_NOINCREMENT);
-	LL_DMA_SetMode(DMA2, LL_DMA_CHANNEL_3, LL_DMA_MODE_CIRCULAR);
-	LL_DMA_SetDataLength(DMA2, LL_DMA_CHANNEL_3, 1);
-	LL_DMA_EnableChannel(DMA2, LL_DMA_CHANNEL_3);
-
-
-	//enable the dma xfers on capture compare events
-	LL_TIM_EnableDMAReq_CC2(TIM2);
-	LL_TIM_EnableDMAReq_CC3(TIM2);
-	LL_TIM_EnableDMAReq_CC4(TIM2);
-
-	LL_TIM_EnableMasterSlaveMode(TIM3);
-
-	// TIM3 CCR1 delays by 300 bit-times before starting DMA to generate the WS2812 reset signal.
-	// tim3's prescaler matches tim2's cycle so each increment of tim3 is one bit-time
-	LL_TIM_SetAutoReload(TIM3, ws2812TransmissionLengthBits() + 300);
-	LL_TIM_OC_SetCompareCH1(TIM3, 300);
-
-
-	// Scanout a couple of black frames at the start with longer delays between them
-	// This seems to help with initialization.
-	for (int i = 0; i < 20; ++i) {
-		drawPendingFrame();
-		vTaskDelay(pdMS_TO_TICKS(5));
-	}
-
 
 	while (true) {
-		// Wait for previous scanout to finish
-		uint32_t ulInterruptStatus;
-		// already have a frame queued up and we're still in scanout -- nothing to do
 
-		xTaskNotifyWait(
-														0x00,							 /* Don't clear any bits on entry. */
-														ULONG_MAX,					 /* Clear all bits on exit. */
-														&ulInterruptStatus, /* Receives the notification value. */
-														portMAX_DELAY);		 /* Block indefinitely. */
-
-
-		if (systemPowerState.poweroffRequested) {
-			// Clear the screen, then turn off the display power.
-			clearBuffers();
-			drawPendingFrame();
-			vTaskDelay(pdMS_TO_TICKS(5));
-
-			LL_GPIO_SetOutputPin(nLEDPwrEnable_GPIO_Port, nLEDPwrEnable_Pin); // Power off
-			vTaskSuspend(nullptr);
+		// Turn off power to display and wait for the Disp5V supply to drain
+		LL_GPIO_SetOutputPin(nLEDPwrEnable_GPIO_Port, nLEDPwrEnable_Pin); // Power off
+		{
+			uint32_t discharge_start = xTaskGetTickCount();
+			while (true) {
+				uint32_t mv = ADC_read_Disp5V_Sense();
+				if (mv < 250)
+					break; // power is off.
+				vTaskDelay(pdMS_TO_TICKS(4));
+			}
+			logprintf("WS2812Driver: Disp5V discharge took %u ms\n", xTaskGetTickCount() - discharge_start);
 		}
 
-		// Submit the current frame. (swaps buffers, so we're ready to draw again)
-		drawPendingFrame();
+		// Settle time post poweroff
+		do {
+			vTaskDelay(pdMS_TO_TICKS(1000));
+		}	while (!systemPowerState.ws2812PowerEnabled);
 
-		while (true) {
-			uint32_t frameDelayTime = pattern.initFrame();
-			if (!frameDelayTime)
-				break;
-			vTaskDelay(frameDelayTime);
-		}
+		// WS2812 power has been enabled -- start up the panels.
 
-		// Generate a pixel at a time across every channel so that we can write entire blocks of bit-data at once.
-		uint32_t* dst = drawBuffer();
 
-		for (uint8_t pix = 0; pix < channelMaxLength; ++pix) {
-			u8vec3 channelPix[8];
-			for (uint8_t channelIdx = 0; channelIdx < 8; ++channelIdx) {
+		// Ensure that pins are set low when display powers up
+		LL_GPIO_ResetOutputPin(GPIOB, LL_GPIO_PIN_0 | LL_GPIO_PIN_1 | LL_GPIO_PIN_2 | LL_GPIO_PIN_3 | LL_GPIO_PIN_4 | LL_GPIO_PIN_5 | LL_GPIO_PIN_6 | LL_GPIO_PIN_7);
 
-				if (pix >= channelLengths[channelIdx]) {
-					// No pixel on this channel at this index -- just pad with 0
-					channelPix[channelIdx] = u8vec3(0);
-					continue;
+		// Make sure that the timers are disabled
+		LL_TIM_DisableCounter(TIM2);
+		LL_TIM_DisableCounter(TIM3);
+
+		// Wait for the display power rail to settle.
+		// The microcontroller will boot up before the 5V supply is enabled.
+		// We don't want to turn on the display power before the 5V supply has stabilized,
+		// because the inrush limiter won't work correctly.
+		{
+			uint32_t pg_start_time = xTaskGetTickCount();
+			uint32_t pg_counter = 0;
+			while (true) {
+				uint32_t mv = ADC_read_5V_Sense();
+				if (mv > 4750) {
+					pg_counter += 1;
+					if (pg_counter > 25)
+						break; // power has been good long enough
+				} else {
+					// require continuous power-good samples
+					pg_counter = 0;
 				}
 
-				channelPix[channelIdx] = pattern.shadePixel(channelIdx, pix);
+				vTaskDelay(pdMS_TO_TICKS(4));
 			}
-#if 1
-				uint32_t v[2];
-				v[0] =
-					channelPix[7].g << 24 |
-					channelPix[6].g << 16 |
-					channelPix[5].g << 8 |
-					channelPix[4].g;
-				v[1] =
-					channelPix[3].g << 24 |
-					channelPix[2].g << 16 |
-					channelPix[1].g << 8 |
-					channelPix[0].g;
-				transpose8(v, dst);
-				dst += 2;
-
-				v[0] =
-					channelPix[7].r << 24 |
-					channelPix[6].r << 16 |
-					channelPix[5].r << 8 |
-					channelPix[4].r;
-				v[1] =
-					channelPix[3].r << 24 |
-					channelPix[2].r << 16 |
-					channelPix[1].r << 8 |
-					channelPix[0].r;
-				transpose8(v, dst);
-				dst += 2;
-
-				v[0] =
-					channelPix[7].b << 24 |
-					channelPix[6].b << 16 |
-					channelPix[5].b << 8 |
-					channelPix[4].b;
-				v[1] =
-					channelPix[3].b << 24 |
-					channelPix[2].b << 16 |
-					channelPix[1].b << 8 |
-					channelPix[0].b;
-				transpose8(v, dst);
-				dst += 2;
-#else
-				dst[0] = 0;
-				dst[1] = 0;
-				dst += 2;
-				dst[0] = 0;
-				dst[1] = 0;
-				dst += 2;
-#endif
+			logprintf("WS2812Driver: 5V rail good after %u ms\n", xTaskGetTickCount() - pg_start_time);
 		}
+
+		// Turn on the display power.
+		{
+			uint32_t powerOn_start_time = xTaskGetTickCount();
+			LL_GPIO_ResetOutputPin(nLEDPwrEnable_GPIO_Port, nLEDPwrEnable_Pin); // Power on
+			uint32_t powerGood_time = powerOn_start_time;
+			uint32_t pg_counter = 0;
+			while (true) {
+				uint32_t mv = ADC_read_Disp5V_Sense();
+
+				if (mv > 4750) {
+					if ((++pg_counter) > 25)
+						break; // stable
+				} else {
+					pg_counter = 0;
+					powerGood_time = xTaskGetTickCount(); // push the timer forward as long as the power is not good
+				}
+				vTaskDelay(pdMS_TO_TICKS(4));
+			}
+			logprintf("WS2812Driver: Disp5V charge time was %u ms\n", powerGood_time - powerOn_start_time);
+		}
+
+		clearBuffers();
+
+		vTaskDelay(pdMS_TO_TICKS(100)); // Give the display some extra time to stabilize
+
+		// ws2812StartBits can be updated to mask off channels. by default, all channels are active.
+		ws2812StartStopBits[0] = 0xff; // BSRR 'set' bits
+		ws2812StartStopBits[1] = (ws2812StartStopBits[0]) << 16; // BSRR 'reset' bits
+
+		//set up the 3 stages of DMA triggers on TIM2
+
+		// Fires with TIM2_CH2 -- starts the pulse by writing to the 'set' bits in BSRR.
+		LL_DMA_SetMemoryAddress(DMA2, LL_DMA_CHANNEL_1, (uint32_t) &ws2812StartStopBits[0]);
+		LL_DMA_SetPeriphAddress(DMA2, LL_DMA_CHANNEL_1, (uint32_t) &GPIOB->BSRR);
+		LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_CHANNEL_1, LL_DMA_MEMORY_NOINCREMENT);
+		LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_CHANNEL_1, LL_DMA_PERIPH_NOINCREMENT);
+		LL_DMA_SetMode(DMA2, LL_DMA_CHANNEL_1, LL_DMA_MODE_CIRCULAR);
+		LL_DMA_SetDataLength(DMA2, LL_DMA_CHANNEL_1, 1);
+		LL_DMA_EnableChannel(DMA2, LL_DMA_CHANNEL_1);
+
+		//fires with TIM2_CH3 - set the data bit
+		// This either continues the pulse (for a 1) or turns it into a short pulse (for a 0)
+		// We write inverted bits to BRR to avoid clobbering any other output data on the GPIO port.
+		LL_DMA_SetMemoryAddress(DMA2, LL_DMA_CHANNEL_2, (uint32_t) readBuffer());
+		LL_DMA_SetPeriphAddress(DMA2, LL_DMA_CHANNEL_2, (uint32_t) &GPIOB->BRR);
+		LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_CHANNEL_2, LL_DMA_MEMORY_INCREMENT);
+		LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_CHANNEL_2, LL_DMA_PERIPH_NOINCREMENT);
+		LL_DMA_SetMode(DMA2, LL_DMA_CHANNEL_2, LL_DMA_MODE_CIRCULAR);
+		LL_DMA_SetDataLength(DMA2, LL_DMA_CHANNEL_2, ws2812TransmissionLengthBits());
+		LL_DMA_EnableIT_TC(DMA2, LL_DMA_CHANNEL_2);
+		LL_DMA_EnableChannel(DMA2, LL_DMA_CHANNEL_2);
+
+		// Fires with TIM2_CH4 -- clears the pulse with the 'reset' bits in BSRR.
+		LL_DMA_SetMemoryAddress(DMA2, LL_DMA_CHANNEL_3, (uint32_t) &ws2812StartStopBits[1]);
+		LL_DMA_SetPeriphAddress(DMA2, LL_DMA_CHANNEL_3, (uint32_t)&GPIOB->BSRR);
+		LL_DMA_SetMemoryIncMode(DMA2, LL_DMA_CHANNEL_3, LL_DMA_MEMORY_NOINCREMENT);
+		LL_DMA_SetPeriphIncMode(DMA2, LL_DMA_CHANNEL_3, LL_DMA_PERIPH_NOINCREMENT);
+		LL_DMA_SetMode(DMA2, LL_DMA_CHANNEL_3, LL_DMA_MODE_CIRCULAR);
+		LL_DMA_SetDataLength(DMA2, LL_DMA_CHANNEL_3, 1);
+		LL_DMA_EnableChannel(DMA2, LL_DMA_CHANNEL_3);
+
+
+		//enable the dma xfers on capture compare events
+		LL_TIM_EnableDMAReq_CC2(TIM2);
+		LL_TIM_EnableDMAReq_CC3(TIM2);
+		LL_TIM_EnableDMAReq_CC4(TIM2);
+
+		LL_TIM_EnableMasterSlaveMode(TIM3);
+
+		// TIM3 CCR1 delays by 300 bit-times before starting DMA to generate the WS2812 reset signal.
+		// tim3's prescaler matches tim2's cycle so each increment of tim3 is one bit-time
+		LL_TIM_SetAutoReload(TIM3, ws2812TransmissionLengthBits() + 300);
+		LL_TIM_OC_SetCompareCH1(TIM3, 300);
+
+
+		// Scanout a couple of black frames at the start with longer delays between them
+		// This seems to help with initialization.
+		for (int i = 0; i < 20; ++i) {
+			drawPendingFrame();
+			vTaskDelay(pdMS_TO_TICKS(5));
+		}
+
+
+		while (systemPowerState.ws2812PowerEnabled) {
+			// Wait for previous scanout to finish
+			uint32_t ulInterruptStatus;
+			// already have a frame queued up and we're still in scanout -- nothing to do
+
+			xTaskNotifyWait(
+															0x00,							 /* Don't clear any bits on entry. */
+															ULONG_MAX,					 /* Clear all bits on exit. */
+															&ulInterruptStatus, /* Receives the notification value. */
+															portMAX_DELAY);		 /* Block indefinitely. */
+
+			// Submit the current frame. (swaps buffers, so we're ready to draw again)
+			drawPendingFrame();
+
+			while (systemPowerState.ws2812PowerEnabled) {
+				uint32_t frameDelayTime = pattern.initFrame();
+				if (!frameDelayTime)
+					break;
+				vTaskDelay(frameDelayTime);
+			}
+
+			// Generate a pixel at a time across every channel so that we can write entire blocks of bit-data at once.
+			uint32_t* dst = drawBuffer();
+
+			for (uint8_t pix = 0; pix < channelMaxLength; ++pix) {
+				u8vec3 channelPix[8];
+				for (uint8_t channelIdx = 0; channelIdx < 8; ++channelIdx) {
+
+					if (pix >= channelLengths[channelIdx]) {
+						// No pixel on this channel at this index -- just pad with 0
+						channelPix[channelIdx] = u8vec3(0);
+						continue;
+					}
+
+					channelPix[channelIdx] = pattern.shadePixel(channelIdx, pix);
+				}
+	#if 1
+					uint32_t v[2];
+					v[0] =
+						channelPix[7].g << 24 |
+						channelPix[6].g << 16 |
+						channelPix[5].g << 8 |
+						channelPix[4].g;
+					v[1] =
+						channelPix[3].g << 24 |
+						channelPix[2].g << 16 |
+						channelPix[1].g << 8 |
+						channelPix[0].g;
+					transpose8(v, dst);
+					dst += 2;
+
+					v[0] =
+						channelPix[7].r << 24 |
+						channelPix[6].r << 16 |
+						channelPix[5].r << 8 |
+						channelPix[4].r;
+					v[1] =
+						channelPix[3].r << 24 |
+						channelPix[2].r << 16 |
+						channelPix[1].r << 8 |
+						channelPix[0].r;
+					transpose8(v, dst);
+					dst += 2;
+
+					v[0] =
+						channelPix[7].b << 24 |
+						channelPix[6].b << 16 |
+						channelPix[5].b << 8 |
+						channelPix[4].b;
+					v[1] =
+						channelPix[3].b << 24 |
+						channelPix[2].b << 16 |
+						channelPix[1].b << 8 |
+						channelPix[0].b;
+					transpose8(v, dst);
+					dst += 2;
+	#else
+					dst[0] = 0;
+					dst[1] = 0;
+					dst += 2;
+					dst[0] = 0;
+					dst[1] = 0;
+					dst += 2;
+	#endif
+			}
+		} // display power on loop
+
+
+
+		// Clear the screen, then turn off the display power.
+		clearBuffers();
+		drawPendingFrame();
+		vTaskDelay(pdMS_TO_TICKS(5));
+		LL_GPIO_SetOutputPin(nLEDPwrEnable_GPIO_Port, nLEDPwrEnable_Pin); // Power off
 	} // infinite loop
 }

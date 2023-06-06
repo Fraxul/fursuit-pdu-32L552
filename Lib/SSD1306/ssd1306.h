@@ -28,13 +28,14 @@ extern "C" {
 #define SSD1306_HEIGHT          32
 
 // Display flip Screen
-#define SSD1306_INIT_LEN		18 // 18: no screen flip, 20: screen flip
+#define SSD1306_FLIP_SCREEN   0
 
 // Single character  width
 #define SSD1306_CHAR_WIDTH		6
 
 //  Function declaration
 void ssd1306_Init(I2C_HandleTypeDef *hi2c);			// Init function pass the pointer to the I2C handle structure
+void ssd1306_SendConfig(); // Reinitialize display
 void ssd1306_ClearScreen(void);						// Clear Screen
 void ssd1306_WriteChar(char ch, uint8_t fsize);		// Font size 0: 5x8, 1: 10x16, 2: 15x24 3: 20x32
 void ssd1306_WriteString(char *msg, uint8_t fsize);	// Font size 0: 5x8, 1: 10x16, 2: 15x24 3: 20x32

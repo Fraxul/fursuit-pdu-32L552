@@ -36,6 +36,7 @@ struct SystemPowerState_t {
   uint16_t chargerTJ_degC;
 
   // State machine
+  uint8_t ws2812PowerEnabled;
   uint8_t poweroffRequested;
 };
 

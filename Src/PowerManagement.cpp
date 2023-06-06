@@ -54,6 +54,7 @@ void PM_NotifyInputPowerStateUpdated() {
 }
 
 void PM_RequestPowerOff() {
+  systemPowerState.ws2812PowerEnabled = 0;
   systemPowerState.poweroffRequested = 1;
 }
 
