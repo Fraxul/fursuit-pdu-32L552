@@ -37,6 +37,7 @@ struct SystemPowerState_t {
   uint16_t chargerTJ_degC;
 
   // State machine
+  uint8_t jetsonPowerEnabled;
   uint8_t ws2812PowerEnabled;
   uint8_t poweroffRequested;
 
@@ -70,6 +71,8 @@ void PM_DisconnectPower(); // Shortcut for setting isReady = 0 and notifying sta
 void PM_RequestPowerOff();
 
 void PM_Shell_DumpPowerStats();
+
+void PM_SetJetsonPowerState(uint8_t newState);
 
 void Task_PowerManagement(void*);
 

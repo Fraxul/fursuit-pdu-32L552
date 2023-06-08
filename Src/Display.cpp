@@ -44,6 +44,7 @@ void ssd1306_lineprintf(uint8_t ypos, uint8_t fsize, const char* fmt, ...) {
 enum UISelectionState : int {
   kNoSelection,
   kToggleWS2812Power,
+  kToggleJetsonPower,
   kPowerOff,
   kUISelectionStateMax
 };
@@ -69,6 +70,10 @@ void UISelect_LongPress() {
 
     case kToggleWS2812Power:
       systemPowerState.ws2812PowerEnabled = !systemPowerState.ws2812PowerEnabled;
+      break;
+
+    case kToggleJetsonPower:
+      PM_SetJetsonPowerState(!systemPowerState.jetsonPowerEnabled);
       break;
 
     case kPowerOff:
@@ -135,8 +140,13 @@ void Task_Display(void* unused) {
       case kToggleWS2812Power:
         ssd1306_lineprintf(7, 0, ":: WS2812 %s?", systemPowerState.ws2812PowerEnabled ? "OFF" : "ON");
         break;
+
+      case kToggleJetsonPower:
+        ssd1306_lineprintf(7, 0, ":: JETSON %s?", systemPowerState.jetsonPowerEnabled ? "OFF" : "ON");
+        break;
+
       case kPowerOff:
-        ssd1306_lineprintf(7, 0, ":: POWER OFF?");
+        ssd1306_lineprintf(7, 0, ":: SYS POWER OFF?");
         break;
     }
 

@@ -55,8 +55,20 @@ void PM_NotifyInputPowerStateUpdated() {
 }
 
 void PM_RequestPowerOff() {
+  logprintf("PM_RequestPowerOff()\n");
   systemPowerState.ws2812PowerEnabled = 0;
+  PM_SetJetsonPowerState(0);
   systemPowerState.poweroffRequested = 1;
+}
+
+void PM_SetJetsonPowerState(uint8_t newState) {
+  logprintf("PM_SetJetsonPowerState(%u)\n", newState);
+  systemPowerState.jetsonPowerEnabled = newState;
+  if (newState) {
+    LL_GPIO_SetOutputPin(JetsonPwrEnable_GPIO_Port, JetsonPwrEnable_Pin);
+  } else {
+    LL_GPIO_ResetOutputPin(JetsonPwrEnable_GPIO_Port, JetsonPwrEnable_Pin);
+  }
 }
 
 bool MP2760_SetPowerInputEnabled(bool enabled) {
