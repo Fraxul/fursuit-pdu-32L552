@@ -93,25 +93,35 @@ static uint8_t col, page;
 static I2C_HandleTypeDef *i2cHandle = NULL;
 
 static const uint8_t ssd1306_initCmd[] = {
+		// NOP sled in case the command interface gets into a weird state
+		// The longest command is 7 bytes (0x26/0x27 Continuous Horizontal Scroll),
+		// so 8 bytes of NOPs should be enough to get out of any command that
+		// happens to be active.
+
+		0xE3, 0xE3, 0xE3, 0xE3,
+		0xE3, 0xE3, 0xE3, 0xE3,
+
 #if (SSD1306_HEIGHT == 64)
-		0xA8, 0x3F, 		// Set multiplex (HEIGHT-1): 0x3F for 128x64
-		0x22, 0x00, 0x07, 	// Set min and max page:  0x07 for 128x64
-		0xDA, 0x12, 		// Set COM pins hardware config to seq: 0x12 for 128x64
+		0xA8, 0x3F,				// Set multiplex (HEIGHT-1): 0x3F for 128x64
+		0x22, 0x00, 0x07, // Set min and max page:  0x07 for 128x64
+		0xDA, 0x12,				// Set COM pins hardware config to seq: 0x12 for 128x64
 #else
-		0xA8, 0x1F, 		// Set multiplex (HEIGHT-1): 0x1F for 128x32
-		0x22, 0x00, 0x03,	// Set min and max page:  0x03 for 128x32
-		0xDA, 0x02,			// Set COM pins hardware config to seq: 0x02 for 128x32
+		0xA8, 0x1F,							// Set multiplex (HEIGHT-1): 0x1F for 128x32
+		0x22, 0x00, 0x03,				// Set min and max page:  0x03 for 128x32
+		0xDA, 0x02,							// Set COM pins hardware config to seq: 0x02 for 128x32
 #endif
-		0x20, 0x00,			// Set horizontal memory addressing mode
-		0x8D, 0x14,			// Enable charge pump
-		0x81, 0xFF,			// Set contrast 0x01 = Min contrast, 0xFF = Max contrast
-		0xD5, 0xF0,			// Set display clock divide and frequency set clock to max
-		0x2E,						// Deactivate scroll
-		0xD3, 0x00,			// Set display offset to 0
-		0xAF,						// Screen on
+		0x20, 0x00,				// Set horizontal memory addressing mode
+		0x21, 0x00, 0x7f, // Set column start and end address to defaults (0-127)
+		0x8D, 0x14,				// Enable charge pump
+		0x81, 0xFF,				// Set contrast 0x01 = Min contrast, 0xFF = Max contrast
+		0xD5, 0xF0,				// Set display clock divide and frequency set clock to max
+		0x2E,							// Deactivate scroll
+		0x40,							// Display RAM start line = 0
+		0xD3, 0x00,				// Set display offset to 0
+		0xAF,							// Screen on
 
 		// Flip screen command must be last -- see ssd1306_SendConfig
-		0xA1, 0xC8,			// Flip the screen (optional -- see ssd1306_SendConfig)
+		0xA1, 0xC8, // Flip the screen (optional -- see ssd1306_SendConfig)
 };
 
 

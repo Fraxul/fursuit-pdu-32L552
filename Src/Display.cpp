@@ -2,6 +2,7 @@
 #include "PM_SMBUS.h"
 #include <FreeRTOS.h>
 #include <task.h>
+#include <semphr.h>
 #include "i2c.h"
 #include "ssd1306.h"
 #include "log.h"
@@ -49,13 +50,15 @@ enum UISelectionState : int {
 
 UISelectionState uiSelectionState = kNoSelection;
 
+SemaphoreHandle_t uiSelectionUpdatedSemaphore;
+
 void UISelect_ShortPress() {
   int sel = uiSelectionState + 1;
   if (sel >= kUISelectionStateMax)
     sel = kNoSelection;
   uiSelectionState = (UISelectionState) sel;
 
-  xTaskNotify(DisplayHandle, 1, eSetValueWithOverwrite);
+  xSemaphoreGive(uiSelectionUpdatedSemaphore);
 }
 
 void UISelect_LongPress() {
@@ -80,6 +83,7 @@ void UISelect_LongPress() {
 
 
 void Task_Display(void* unused) {
+  uiSelectionUpdatedSemaphore = xSemaphoreCreateBinary();
 
   ssd1306_Init(BUS);
 
@@ -137,8 +141,7 @@ void Task_Display(void* unused) {
     }
 
     // Redraw every second, or if we get a notification (due to button press)
-    uint32_t notificationValue = 0;
-    xTaskNotifyWait(0, 0, &notificationValue, pdMS_TO_TICKS(1000));
+    xSemaphoreTake(uiSelectionUpdatedSemaphore, pdMS_TO_TICKS(1000));
 
     if (systemPowerState.poweroffRequested) {
       ssd1306_lineprintf(0, 0, "");
