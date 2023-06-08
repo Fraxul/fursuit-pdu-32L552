@@ -80,8 +80,8 @@ void Error_Handler(void);
 #define ADC_Disp5V_Sense_GPIO_Port GPIOA
 #define ADC_5V_Sense_Pin LL_GPIO_PIN_6
 #define ADC_5V_Sense_GPIO_Port GPIOA
-#define nJetsonPwrEnable_Pin LL_GPIO_PIN_7
-#define nJetsonPwrEnable_GPIO_Port GPIOA
+#define JetsonPwrEnable_Pin LL_GPIO_PIN_7
+#define JetsonPwrEnable_GPIO_Port GPIOA
 #define UCPD_DBN_Pin LL_GPIO_PIN_12
 #define UCPD_DBN_GPIO_Port GPIOB
 #define UCPD_FLT_Pin LL_GPIO_PIN_8
