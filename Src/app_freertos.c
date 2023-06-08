@@ -73,8 +73,8 @@ static uint8_t staticUsbTxStreamStorage[usbTxStreamSize + 1];
 
 DECLARE_TASK(USB_Tx, 128);
 DECLARE_TASK(Shell, 256);
-DECLARE_TASK(PowerManagement, 192);
-DECLARE_TASK(Display, 192);
+DECLARE_TASK(PowerManagement, 256);
+DECLARE_TASK(Display, 256);
 DECLARE_TASK(WS2812, 256);
 
 /* USER CODE END Variables */

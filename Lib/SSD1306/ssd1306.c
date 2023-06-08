@@ -124,7 +124,7 @@ static void i2cWrite(uint8_t mode, const uint8_t *data, uint8_t lenght){
 	ulTaskNotifyValueClear(ssd1306WriteTask, 0xffffffffUL);
 
 	while (1) {
-		HAL_StatusTypeDef st = HAL_I2C_Mem_Write_DMA(i2cHandle, SSD1306_I2C_ADDR, mode, I2C_MEMADD_SIZE_8BIT, data, lenght);
+		HAL_StatusTypeDef st = HAL_I2C_Mem_Write_DMA(i2cHandle, SSD1306_I2C_ADDR, mode, I2C_MEMADD_SIZE_8BIT, (uint8_t*) data, lenght);
 		if (st == HAL_BUSY) {
 			vTaskDelay(1);
 			continue;

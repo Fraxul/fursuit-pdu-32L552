@@ -16,7 +16,7 @@ struct InputPowerState_t {
 struct SystemPowerState_t {
 
   // System info (from MP2760 charger)
-  uint16_t systemVoltage;
+  uint16_t systemVoltage_mV;
 
 
   // Battery info
@@ -24,6 +24,7 @@ struct SystemPowerState_t {
   uint16_t remainingCapacity_mAH; // milliamp-hours
   uint16_t batteryVoltage_mV; // millivolts
   int16_t batteryCurrent_mA; // milliamps. signed value representing charge (positive) and discharge (negative).
+  int32_t batteryPower_mW; // milliwatts. signed value representing charge (positive) and discharge (negative).
   int16_t batteryTemperature_degC; // 1 deg C resolution
 
   uint16_t timeToEmpty_seconds; // valid only when discharging
@@ -38,6 +39,14 @@ struct SystemPowerState_t {
   // State machine
   uint8_t ws2812PowerEnabled;
   uint8_t poweroffRequested;
+
+  // Error reporting
+  uint8_t hasErrorMsg;
+  char errorMsg[20];
+
+
+  uint16_t mp2760_reg16h;
+  uint16_t mp2760_reg17h;
 };
 
 struct FanState_t {

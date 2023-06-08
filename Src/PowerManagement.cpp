@@ -8,9 +8,10 @@
 #include "adc.h"
 #include "i2c.h"
 #include "log.h"
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#include <stdio.h>
+#include <stdarg.h>
 
 extern TaskHandle_t PowerManagementHandle;
 
@@ -242,6 +243,19 @@ bool MAX17320_InitDefaults() {
   return compareOK;
 }
 
+void PM_SetErrorMsg(const char* fmt, ...) {
+  va_list v;
+  va_start(v, fmt);
+  vsnprintf(systemPowerState.errorMsg, sizeof(systemPowerState.errorMsg), fmt, v);
+  va_end(v);
+  systemPowerState.errorMsg[sizeof(systemPowerState.errorMsg) - 1] = '\0';
+  systemPowerState.hasErrorMsg = 1;
+}
+
+void PM_ClearErrorMsg() {
+  systemPowerState.hasErrorMsg = 0;
+}
+
 bool MP2760_UpdateSystemPowerState() {
   union {
     uint16_t value;
@@ -261,7 +275,7 @@ bool MP2760_UpdateSystemPowerState() {
   // REG26, ADC System Voltage
   if (!PM_SMBUS_ReadReg16(MP2760_pCTX, MP2760_ADDR, 0x26, value))
     return false;
-  systemPowerState.systemVoltage = (value & 0x3ff) * 20; // 20 mV/LSB
+  systemPowerState.systemVoltage_mV = (value & 0x3ff) * 20; // 20 mV/LSB
 
   // REG27, ADC Charge Current
   if (!PM_SMBUS_ReadReg16(MP2760_pCTX, MP2760_ADDR, 0x27, value))
@@ -279,6 +293,76 @@ bool MP2760_UpdateSystemPowerState() {
     // (314*2048) - ((0.5703*2048) * REG2Ah)) / 2048
     systemPowerState.chargerTJ_degC = (643072U - (value  * 1168U)) / 2048;
   }
+
+  // REG16, Status and Fault Register 0
+  if (!PM_SMBUS_ReadReg16(MP2760_pCTX, MP2760_ADDR, 0x16, value))
+    return false;
+  if (value != systemPowerState.mp2760_reg16h) {
+    // flags changed
+    logprintf("MP2760: REG16h was %x, now %x (diff %x)\n", systemPowerState.mp2760_reg16h, value, systemPowerState.mp2760_reg16h ^ value);
+    const char* md_stat = (value & 0b0100'0000'0000'0000) ? "Operation " : "Standby ";
+    const char* pg_stat = (value & 0b0010'0000'0000'0000) ? "PowerGood " : "NotPowerGood ";
+    const char* switch_stat = nullptr;
+    switch ((value & 0b0001'1000'0000'0000) >> 11) {
+      case 0: switch_stat = "Idle "; break;
+      case 1: switch_stat = "Buck "; break;
+      case 2: switch_stat = "Boost "; break;
+      case 3: switch_stat = "BuckBoost "; break;
+    }
+    const char* batt_miss_stat = (value & 0b0000'0100'0000'0000) ? "BatMissing " : "";
+    const char* chg_stat = nullptr;
+    switch ((value & 0b0000'0001'1100'0000) >> 6) {
+      case 0: chg_stat = "NotCharging "; break;
+      case 1: chg_stat = "Trickle "; break;
+      case 2: chg_stat = "Pre-Charge "; break;
+      case 3: chg_stat = "CC-Charge "; break;
+      case 4: chg_stat = "CV-Charge "; break;
+      case 5: chg_stat = "Term-Charge "; break;
+    }
+    const char* vin_min_stat = (value & 0b0010'0000) ? "VIN_Lim " : "";
+    const char* iin_lim_stat = (value & 0b0001'0000) ? "IIN_Lim " : "";
+    const char* batfet_oc = (value & 0b100) ? "BatFET_OC " : "";
+    const char* ts_fault = (value & 0b10) ? "TS_Hot " : "";
+
+    logprintf("REG16: %s%s%s%s%s%s%s%s%s\n", md_stat, pg_stat, switch_stat, batt_miss_stat, chg_stat, vin_min_stat, iin_lim_stat, batfet_oc, ts_fault);
+  }
+  systemPowerState.mp2760_reg16h = value;
+
+  // REG17, Status and Fault Register 0
+  if (!PM_SMBUS_ReadReg16(MP2760_pCTX, MP2760_ADDR, 0x17, value))
+    return false;
+  if (value != systemPowerState.mp2760_reg17h) {
+    // flags changed
+    logprintf("MP2760: REG17h was %x, now %x (diff %x)\n", systemPowerState.mp2760_reg17h, value, systemPowerState.mp2760_reg17h ^ value);
+
+    const char* vin_src_ov = (value & 0b1000'0000'0000'0000) ? "SrcOVP " : "";
+    const char* vin_src_uv = (value & 0b0100'0000'0000'0000) ? "SrcUVP " : "";
+    const char* vin_chg_ov = (value & 0b0010'0000'0000'0000) ? "InOVP " : "";
+    const char* vadp_ov =    (value & 0b0001'0000'0000'0000) ? "VAdpOVP " : "";
+
+    const char* vsys_ov =    (value & 0b0000'1000'0000'0000) ? "VSysOVP " : "";
+    const char* vsys_uv =    (value & 0b0000'0100'0000'0000) ? "VSysUVP " : "";
+    const char* vbat_ov =    (value & 0b0000'0001'0000'0000) ? "VBatOVP " : "";
+
+    const char* vbat_low = (value & 0b1000'0000) ? "VBat_Low " : "";
+    const char* wdt_exp =  (value & 0b0100'0000) ? "WDT_Exp " : "";
+    const char* chg_tmr_exp = (value & 0b0010'0000) ? "Chg_Tmr_Exp " : "";
+    const char* therm_shdn = (value & 0b0001'0000) ? "Therm_Shdn " : "";
+    const char* ntc_fault = nullptr;
+    switch (value & 0b111) {
+      case 0: ntc_fault = "NTC_Normal"; break;
+      case 1: ntc_fault = "NTC_Cold"; break;
+      case 2: ntc_fault = "NTC_Cool"; break;
+      case 3: ntc_fault = "NTC_Warm"; break;
+      case 4: ntc_fault = "NTC_Hot"; break;
+      default:
+      case 7: ntc_fault = "NTC_Float"; break;
+    }
+    logprintf("REG17: %s%s%s%s%s%s%s%s%s%s%s%s\n", vin_src_ov, vin_src_uv, vin_chg_ov, vadp_ov, vsys_ov, vsys_uv, vbat_ov, vbat_low, wdt_exp, chg_tmr_exp, therm_shdn, ntc_fault);
+  }
+  systemPowerState.mp2760_reg17h = value;
+
+
 
   return true;
 }
@@ -302,11 +386,17 @@ bool MAX17320_UpdateSystemPowerState() {
   // convert from 0.3125mV / LSB to millivolts
   systemPowerState.batteryVoltage_mV = (static_cast<uint32_t>(value) * 3125U) / 10000UL;
 
-  if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0x1c /*Current*/, value))
+  if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0x1d /*Avg Current*/, value))
     return false;
 
   // Convert to mA using a precomputed conversion factor based on nRSense
   systemPowerState.batteryCurrent_mA = static_cast<int16_t>(static_cast<float>(value_signed) * max17320_current_conversion_factor_milliamps);
+
+  if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0xb3 /*Avg Power*/, value))
+    return false;
+
+  // Convert to mW from 0.4 mW/LSB
+  systemPowerState.batteryPower_mW = (static_cast<int32_t>(value_signed) * 10) / 4;
 
   if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0x1b /*Temp*/, value))
     return false;
@@ -424,35 +514,6 @@ void Task_PowerManagement(void*) {
   logprintf("Task_PowerManagement: Start\n");
   memset(&systemPowerState, 0, sizeof(systemPowerState));
 
-
-  {
-    bool max17320_ok = false;
-    bool mp2760_ok = false;
-    while (true) {
-      if (!max17320_ok) {
-        max17320_ok = MAX17320_InitDefaults();
-
-        if (max17320_ok)
-          logprintf("Task_PowerManagement: MAX17320 fuel gauge init OK\n");
-        else
-          logprintf("Task_PowerManagement: Could not initialize MAX17320 fuel gauge!\n");
-      }
-
-      if (!mp2760_ok) {
-        mp2760_ok = MP2760_InitDefaults();
-
-        if (mp2760_ok)
-          logprintf("Task_PowerManagement: MP2760 charger init OK\n");
-        else
-          logprintf("Task_PowerManagement: Could not initialize MP2760 charger!\n");
-      }
-
-      if (max17320_ok && mp2760_ok)
-        break;
-      vTaskDelay(pdMS_TO_TICKS(5000));
-    }
-  }
-
   // Set up for the basic USB power limit.
   MP2760_SetPowerInputEnabled(false);
   MP2760_SetInputCurrentLimit(500);
@@ -463,7 +524,9 @@ void Task_PowerManagement(void*) {
   inputPowerState.maxPower_mW = 2500;
 
   // EMC2302 init does not block PM task running
-  bool emc2302_ok = EMC2302_Init();
+  bool max17320_ok = false;
+  bool mp2760_ok = false;
+  bool emc2302_ok = false;
 
   logprintf("Task_PowerManagement: InitDefaults() done\n");
 
@@ -473,13 +536,40 @@ void Task_PowerManagement(void*) {
     // logprintf("PM: 5V_Sense=%u mv Disp5V_Sense=%u mv VBUS=%u mv\n", ADC_read_5V_Sense(), ADC_read_Disp5V_Sense(), ADC_read_TC_VBUS_Sense());
 
     // Always update system power state every tick.
-    MAX17320_UpdateSystemPowerState();
-    MP2760_UpdateSystemPowerState();
+    if (max17320_ok) {
+      MAX17320_UpdateSystemPowerState();
+    } else {
+      max17320_ok = MAX17320_InitDefaults();
+
+      if (max17320_ok)
+        logprintf("Task_PowerManagement: MAX17320 fuel gauge init OK\n");
+      else
+        logprintf("Task_PowerManagement: Could not initialize MAX17320 fuel gauge!\n");
+    }
+
+    if (mp2760_ok) {
+      MP2760_UpdateSystemPowerState();
+    } else {
+      mp2760_ok = MP2760_InitDefaults();
+
+      if (mp2760_ok)
+        logprintf("Task_PowerManagement: MP2760 charger init OK\n");
+      else
+        logprintf("Task_PowerManagement: Could not initialize MP2760 charger!\n");
+    }
 
     if (emc2302_ok) {
       EMC2302_Update();
     } else {
       emc2302_ok = EMC2302_Init();
+      if (emc2302_ok)
+        logprintf("Task_PowerManagement: EMC2302 fan controller init OK\n");
+    }
+
+    if (!(max17320_ok && mp2760_ok && emc2302_ok)) {
+      PM_SetErrorMsg("%s%s%s", max17320_ok ? "" : "-BMS? ", mp2760_ok ? "" : "-CHARGER? ", emc2302_ok ? "" : "-FAN? ");
+    } else {
+      PM_ClearErrorMsg();
     }
 
     vTaskDelay(pdMS_TO_TICKS(1000));
@@ -487,24 +577,29 @@ void Task_PowerManagement(void*) {
     if (systemPowerState.poweroffRequested) {
       logprintf("Task_PowerManagement: Power off requested.\n");
 
-      bool ok = true;
+      bool ok;
       do {
-        {
+        ok = true;
+        if (mp2760_ok) {
           // Configure MP2760 for power off: Disable charging and the DC/DC converter.
           // REG12 (Configuration Register 4)
           // bit 6: DC/DC_EN -- Enable (1) or disable (0) the DC/DC converter.
           // bit 0: CHG_EN -- Enable (1) or disable (0) battery charging.
           const uint16_t bits = 0b0100'0001;
           ok &= PM_SMBUS_RMWReg16(MP2760_pCTX, MP2760_ADDR, 0x12, ~(bits), 0);
+        } else {
+          logprintf("Task_PowerManagement: MP2760 never initialized, skipping shutdown procedure\n");
         }
 
         // Request MAX17320 to enter SHIP mode.
-        {
+        if (max17320_ok) {
           // Config register (0x00B)
           // Bit 10: Pushbutton wake enable
           // Bit  7: Force-enter SHIP mode (after nDelayCfg.UVPTimer expires)
           const uint16_t configBits = 0b0000'0100'1000'0000;
           ok &= PM_SMBUS_RMWReg16(MAX17320_pCTX, MAX17320_BANK0, 0x0b, /*mask=*/ 0xffff, /*toSet=*/ configBits);
+        } else {
+          logprintf("Task_PowerManagement: MAX17320 never initialized, skipping shutdown procedure\n");
         }
       } while (!ok);
 
@@ -526,7 +621,7 @@ void Task_PowerManagement(void*) {
       vTaskSuspend(nullptr); // won't return after this -- power should be turned off.
     }
 
-    if (inputPowerStateUpdated) {
+    if (mp2760_ok && inputPowerStateUpdated) {
       // Notification received -- update the charger.
       inputPowerStateUpdated = false;
 
@@ -574,7 +669,9 @@ void Task_PowerManagement(void*) {
         }
 
         MP2760_SetInputCurrentLimit(currentLimitStep * i);
-        MAX17320_UpdateSystemPowerState();
+        if (max17320_ok)
+          MAX17320_UpdateSystemPowerState();
+
         vTaskDelay(pdMS_TO_TICKS(1000));
       }
     }
