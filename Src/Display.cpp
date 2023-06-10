@@ -46,6 +46,10 @@ enum UISelectionState : int {
   kToggleWS2812Power,
   kToggleJetsonPower,
   kPowerOff,
+  kFan0Minus,
+  kFan0Plus,
+  kFan1Minus,
+  kFan1Plus,
   kUISelectionStateMax
 };
 
@@ -79,6 +83,23 @@ void UISelect_LongPress() {
     case kPowerOff:
       PM_RequestPowerOff();
       break;
+
+    case kFan0Minus:
+      PM_AlterFanSpeed(0, -8);
+      break;
+
+    case kFan0Plus:
+      PM_AlterFanSpeed(0, 8);
+      break;
+
+    case kFan1Minus:
+      PM_AlterFanSpeed(1, -8);
+      break;
+
+    case kFan1Plus:
+      PM_AlterFanSpeed(1, 8);
+      break;
+
   }
 
   // clear selection after action
@@ -98,6 +119,9 @@ void Task_Display(void* unused) {
   while (true) {
     ssd1306_SendConfig();
 
+    // page swaps every 4096 ticks (4 seconds), approx.
+    uint8_t statsPage = (xTaskGetTickCount() >> 12) & 1;
+
     unsigned int w = abs(systemPowerState.batteryPower_mW) / 1000;
     unsigned int dw = (abs(systemPowerState.batteryPower_mW) - (w * 1000)) / 100;
     ssd1306_lineprintf(0, 1, "%2u%s %u.%uW", systemPowerState.stateOfCharge_pct, systemPowerState.stateOfCharge_pct >= 100 ? "" : "%", w, dw);
@@ -106,29 +130,48 @@ void Task_Display(void* unused) {
 
     ssd1306_lineprintf(3, 0, "BAT: %dC  CHG: %dC", systemPowerState.batteryTemperature_degC, systemPowerState.chargerTJ_degC);
 
-    if (inputPowerState.isReady) {
-      ssd1306_lineprintf(4, 0, "IN: %uV %u/%uMA", (systemPowerState.chargerPowerInput_mV + 500) / 1000, systemPowerState.chargerPowerInput_mA, inputPowerState.maxCurrent_mA);
-    } else {
-      ssd1306_lineprintf(4, 0, ""); // clear input state line
-    }
-
     if (systemPowerState.timeToEmpty_seconds != 0 && systemPowerState.timeToEmpty_seconds != 0xffff) {
       int minutes = systemPowerState.timeToEmpty_seconds / 60;
       int seconds = systemPowerState.timeToEmpty_seconds - (minutes * 60);
-      ssd1306_lineprintf(5, 0, "RUNTIME: %uM %02uS", minutes, seconds);
+      ssd1306_lineprintf(4, 0, "RUNTIME: %uM %02uS", minutes, seconds);
 
     } else if (systemPowerState.timeToFull_seconds != 0 && systemPowerState.timeToFull_seconds != 0xffff) {
       int minutes = systemPowerState.timeToFull_seconds / 60;
       int seconds = systemPowerState.timeToFull_seconds - (minutes * 60);
-      ssd1306_lineprintf(5, 0, "TO FULL: %uM %02uS", minutes, seconds);
+      ssd1306_lineprintf(4, 0, "TO FULL: %uM %02uS", minutes, seconds);
     } else {
-      ssd1306_lineprintf(5, 0, ""); // clear the runtime-estimate line, since we have no data.
+      ssd1306_lineprintf(4, 0, ""); // clear the runtime-estimate line, since we have no data.
     }
 
-    if (systemPowerState.hasErrorMsg) {
-      ssd1306_lineprintf(6, 0, "%s", systemPowerState.errorMsg);
-    } else {
-      ssd1306_lineprintf(6, 0, ""); // no data here yet
+
+    if (statsPage == 0 && (!inputPowerState.isReady || systemPowerState.hasErrorMsg)) {
+      ++statsPage; // Don't show this stats page if there's nothing on it.
+    }
+
+    switch (statsPage) {
+      default:
+      case 0:
+        if (inputPowerState.isReady) {
+          ssd1306_lineprintf(5, 0, "IN: %uV %u/%uMA", (systemPowerState.chargerPowerInput_mV + 500) / 1000, systemPowerState.chargerPowerInput_mA, inputPowerState.maxCurrent_mA);
+        } else {
+          ssd1306_lineprintf(5, 0, ""); // clear input state line
+        }
+
+        if (systemPowerState.hasErrorMsg) {
+          ssd1306_lineprintf(6, 0, "%s", systemPowerState.errorMsg);
+        } else {
+          ssd1306_lineprintf(6, 0, ""); // no data here yet
+        }
+        break;
+      case 1:
+        for (int fanIdx = 0; fanIdx < 2; ++fanIdx) {
+          if (fan[fanIdx].stalled || fan[fanIdx].driveFailure || fan[fanIdx].spinupFailure) {
+            ssd1306_lineprintf(5 + fanIdx, 0, "FAN%u: %s%s%s", fanIdx, fan[fanIdx].stalled ? "STALL " : "", fan[fanIdx].driveFailure ? "-DRV " : "", fan[fanIdx].spinupFailure ? "-SPINUP" : "");
+          } else {
+            ssd1306_lineprintf(5 + fanIdx, 0, "FAN%u: DRV=%u %uRPM", fanIdx, fan[fanIdx].pwmDrive, fan[fanIdx].tachometer);
+          }
+        }
+        break;
     }
 
     switch (uiSelectionState) {
@@ -147,6 +190,22 @@ void Task_Display(void* unused) {
 
       case kPowerOff:
         ssd1306_lineprintf(7, 0, ":: SYS POWER OFF?");
+        break;
+
+      case kFan0Minus:
+        ssd1306_lineprintf(7, 0, ":: FAN0 -SPD?");
+        break;
+
+      case kFan0Plus:
+        ssd1306_lineprintf(7, 0, ":: FAN0 +SPD?");
+        break;
+
+      case kFan1Minus:
+        ssd1306_lineprintf(7, 0, ":: FAN1 -SPD?");
+        break;
+
+      case kFan1Plus:
+        ssd1306_lineprintf(7, 0, ":: FAN1 +SPD?");
         break;
     }
 

@@ -74,6 +74,8 @@ void PM_Shell_DumpPowerStats();
 
 void PM_SetJetsonPowerState(uint8_t newState);
 
+void PM_AlterFanSpeed(uint8_t fanIdx, int8_t deltaSpeed);
+
 void Task_PowerManagement(void*);
 
 #ifdef __cplusplus

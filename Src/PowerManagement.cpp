@@ -12,6 +12,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <stdarg.h>
+#include <assert.h>
 
 extern TaskHandle_t PowerManagementHandle;
 
@@ -33,6 +34,27 @@ extern "C" {
 #define MAX17320_pCTX &hsmbus2
 #define MP2760_pCTX &hsmbus2
 #define EMC2302_pCTX &hsmbus2
+
+
+const uint8_t emc2302_fanConfig1 = 0b00001011; // RPM algo disabled, RANGE = 1x, EDGES = 2 (default), update time = 400ms (default)
+const uint8_t emc2302_fanConfig2 = 0b01101000; // Ramp rate control enabled, glitch filter enabled (default), basic derivative (default), error range = 0 RPM (default)
+const uint8_t emc2302_fanMinDrive = 0x33; // 20% minimum PWM drive (0.2 * 255)
+
+static bool emc2302_fanSettingsDirty = false;
+
+void PM_AlterFanSpeed(uint8_t fanIdx, int8_t deltaSpeed) {
+  assert(fanIdx < kFanCount);
+
+  int16_t pwmDrive = fan[fanIdx].pwmDrive + deltaSpeed;
+  if (pwmDrive < emc2302_fanMinDrive)
+    pwmDrive = emc2302_fanMinDrive;
+  else if (pwmDrive > 255)
+    pwmDrive = 255;
+
+  fan[fanIdx].pwmDrive = pwmDrive;
+
+  emc2302_fanSettingsDirty = true;
+}
 
 void PM_DisconnectPower() {
   inputPowerState.isReady = 0;
@@ -452,20 +474,15 @@ bool EMC2302_Init() {
     return false;
   }
 
-
   PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, 0x20, 0b10000000); // disable ALERT, enable SMBus timeout, powerup watchdog only, no tach clock out, use internal oscillator
 
-  uint8_t fanConfig1 = 0b00001011; // RPM algo disabled, RANGE = 1x, EDGES = 2 (default), update time = 400ms (default)
-  uint8_t fanConfig2 = 0b01101000; // Ramp rate control enabled, glitch filter enabled (default), basic derivative (default), error range = 0 RPM (default)
-  uint8_t fanMinDrive = 0x33; // 20% minimum PWM drive (0.2 * 255)
-
-  for (int fanIdx = 0; fanIdx < 2; ++fanIdx) {
+  for (int fanIdx = 0; fanIdx < kFanCount; ++fanIdx) {
     fan[fanIdx].pwmDrive = 0x33; // 20% default
 
     // Fan base addresses are {0x30, 0x40}
-    PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x32, fanConfig1); // Configuration 1
-    PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x33, fanConfig2); // Configuration 2
-    PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x38, fanMinDrive); // Min Drive
+    PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x32, emc2302_fanConfig1); // Configuration 1
+    PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x33, emc2302_fanConfig2); // Configuration 2
+    PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x38, emc2302_fanMinDrive); // Min Drive
 
     PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x30, fan[fanIdx].pwmDrive); // PWM drive percentage
   }
@@ -495,6 +512,14 @@ void EMC2302_Update() {
     else
       fan[fanIdx].tachometer = 3932160UL / tach;
   }
+
+  if (emc2302_fanSettingsDirty) {
+    for (int fanIdx = 0; fanIdx < kFanCount; ++fanIdx) {
+      PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x30, fan[fanIdx].pwmDrive); // PWM drive percentage
+    }
+    emc2302_fanSettingsDirty = false;
+  }
+
 }
 
 void PM_Shell_DumpPowerStats() {
