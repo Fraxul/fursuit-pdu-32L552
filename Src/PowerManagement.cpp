@@ -414,7 +414,7 @@ bool MAX17320_UpdateSystemPowerState() {
   if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0x05 /*RepCap*/, systemPowerState.remainingCapacity_mAH))
     return false;
 
-  if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0xdb /*PCKP*/, value))
+  if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0xda /*Batt -- total pack voltage*/, value))
     return false;
 
   // convert from 0.3125mV / LSB to millivolts
@@ -426,11 +426,16 @@ bool MAX17320_UpdateSystemPowerState() {
   // Convert to mA using a precomputed conversion factor based on nRSense
   systemPowerState.batteryCurrent_mA = static_cast<int16_t>(static_cast<float>(value_signed) * max17320_current_conversion_factor_milliamps);
 
+#if 0
   if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0xb3 /*Avg Power*/, value))
     return false;
 
   // Convert to mW from 0.4 mW/LSB
   systemPowerState.batteryPower_mW = (static_cast<int32_t>(value_signed) * 10) / 4;
+#else
+  // Avg power register format doesn't seem to match the datasheet. Just compute it from instantaneous voltage and avg current; close enough.
+  systemPowerState.batteryPower_mW = (static_cast<int32_t>(systemPowerState.batteryCurrent_mA) * static_cast<int32_t>(systemPowerState.batteryVoltage_mV)) / 1000;
+#endif
 
   if (!PM_SMBUS_ReadReg16(MAX17320_pCTX, MAX17320_BANK0, 0x1b /*Temp*/, value))
     return false;
