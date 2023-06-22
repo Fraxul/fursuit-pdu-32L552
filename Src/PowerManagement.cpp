@@ -482,7 +482,7 @@ bool EMC2302_Init() {
   PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, 0x20, 0b10000000); // disable ALERT, enable SMBus timeout, powerup watchdog only, no tach clock out, use internal oscillator
 
   for (int fanIdx = 0; fanIdx < kFanCount; ++fanIdx) {
-    fan[fanIdx].pwmDrive = 0x33; // 20% default
+    fan[fanIdx].pwmDrive = 0x4c; // 30% default
 
     // Fan base addresses are {0x30, 0x40}
     PM_SMBUS_WriteReg8(EMC2302_pCTX, EMC2302_ADDR, (fanIdx * 0x10) + 0x32, emc2302_fanConfig1); // Configuration 1

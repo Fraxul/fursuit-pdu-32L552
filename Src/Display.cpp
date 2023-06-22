@@ -165,11 +165,11 @@ void Task_Display(void* unused) {
         break;
       case 1:
         for (int fanIdx = 0; fanIdx < 2; ++fanIdx) {
-          if (fan[fanIdx].stalled || fan[fanIdx].driveFailure || fan[fanIdx].spinupFailure) {
-            ssd1306_lineprintf(5 + fanIdx, 0, "FAN%u: %s%s%s", fanIdx, fan[fanIdx].stalled ? "STALL " : "", fan[fanIdx].driveFailure ? "-DRV " : "", fan[fanIdx].spinupFailure ? "-SPINUP" : "");
-          } else {
-            ssd1306_lineprintf(5 + fanIdx, 0, "FAN%u: DRV=%u %uRPM", fanIdx, fan[fanIdx].pwmDrive, fan[fanIdx].tachometer);
-          }
+          //if (fan[fanIdx].stalled || fan[fanIdx].driveFailure || fan[fanIdx].spinupFailure) {
+          //  ssd1306_lineprintf(5 + fanIdx, 0, "FAN%u: %s%s%s", fanIdx, fan[fanIdx].stalled ? "STALL " : "", fan[fanIdx].driveFailure ? "-DRV " : "", fan[fanIdx].spinupFailure ? "-SPINUP" : "");
+          //} else {
+          ssd1306_lineprintf(5 + fanIdx, 0, "FAN%u: DRV=%X %uRPM", fanIdx, fan[fanIdx].pwmDrive, fan[fanIdx].tachometer);
+          //}
         }
         break;
     }
