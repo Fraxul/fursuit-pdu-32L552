@@ -528,26 +528,31 @@ void EMC2302_Update() {
 }
 
 void PM_Shell_DumpPowerStats() {
-  printf("SoC: %u%% (%u mAh)\n", systemPowerState.stateOfCharge_pct, systemPowerState.remainingCapacity_mAH);
-  printf("%5u mV    %d mA    %d degC\n", systemPowerState.batteryVoltage_mV, systemPowerState.batteryCurrent_mA, systemPowerState.batteryTemperature_degC);
+  unsigned int w = abs(systemPowerState.batteryPower_mW) / 1000;
+  unsigned int dw = (abs(systemPowerState.batteryPower_mW) - (w * 1000)) / 100;
+
+  printf("SoC: %u%% (%u mAh) || BAT: %u.%uW     %5u mV    %d mA    %d degC\n",
+    systemPowerState.stateOfCharge_pct, systemPowerState.remainingCapacity_mAH,
+    w, dw,
+    systemPowerState.batteryVoltage_mV, systemPowerState.batteryCurrent_mA, systemPowerState.batteryTemperature_degC);
+
   if (systemPowerState.timeToEmpty_seconds != 0xffff) {
     uint16_t min = systemPowerState.timeToEmpty_seconds / 60;
     uint16_t sec = systemPowerState.timeToEmpty_seconds - (min * 60);
     printf("TTE: %u min %02u sec\n", min, sec);
   }
   if (inputPowerState.isReady) {
-    printf("PD: %u - %u mV, max %u mA, max %lu mW\n",
-      inputPowerState.minVoltage_mV, inputPowerState.maxVoltage_mV,
-      inputPowerState.maxCurrent_mA, inputPowerState.maxPower_mW);
-    printf("Charger: %u mV, %u mA in; %u mA out\n",
-      systemPowerState.chargerPowerInput_mV,
-      systemPowerState.chargerPowerInput_mA,
-      systemPowerState.chargeCurrent_mA);
+    printf("CHG: %u mV, %u mA in; %u mA out; %d degC || PD: max %lu mW",
+      systemPowerState.chargerPowerInput_mV, systemPowerState.chargerPowerInput_mA, systemPowerState.chargeCurrent_mA,
+      systemPowerState.chargerTJ_degC,
+      inputPowerState.maxPower_mW);
+
     if (systemPowerState.timeToFull_seconds != 0xffff) {
       uint16_t min = systemPowerState.timeToFull_seconds / 60;
       uint16_t sec = systemPowerState.timeToFull_seconds - (min * 60);
-      printf("TTF: %u min %02u sec\n", min, sec);
+      printf(" || TTF: %u min %02u sec", min, sec);
     }
+    printf("\n");
   }
 }
 

@@ -1,8 +1,10 @@
 #include "main.h"
+#include "adc.h"
 #include "Shell.h"
 #include "log.h"
 #include "PM_SMBUS.h"
 #include "PowerManagement.h"
+#include "WS2812Driver.h"
 #include <sys/unistd.h> // STDOUT_FILENO, STDERR_FILENO
 
 #include <FreeRTOS.h>
@@ -333,19 +335,11 @@ static const struct ush_file_descriptor dev_files[] = {
         .set_data = led_set_data_callback, // optional data setter callback
     },
     File_RO(ticks, "%lu\n", HAL_GetTick()),
-#if 0
     File_RO(adc_5v_sense, "%lu mv\n", ADC_read_5V_Sense()),
     File_RO(adc_disp5v_sense, "%lu mv\n", ADC_read_Disp5V_Sense()),
-    File_RO(adc_vbat, "%lu mv\n", ADC_read_VBAT()),
-    File_RO(adc_vrefint, "%lu mv\n", ADC_read_VRefInt()),
-    File_RO(disp5v_charge_time, "%lu ms\n", Disp5V_charge_time_ms),
-    File_RO(i2c, "ina260_online=%u emc2302_online=%u\n", ina260_online, emc2302_online),
-    File_RO(ina260, "V=%lu mV A=%ld mA P=%lu mW Mask=%x\n", ina260_voltage, ina260_current, ina260_power, ina260_mask),
     File_RO(fan0, "%u rpm, spinupFailure = %u driveFailure = %u stalled = %u\n", fan[0].tachometer, fan[0].spinupFailure, fan[0].driveFailure, fan[0].stalled),
     File_RO(fan1, "%u rpm, spinupFailure = %u driveFailure = %u stalled = %u\n", fan[1].tachometer, fan[1].spinupFailure, fan[1].driveFailure, fan[1].stalled),
     File_RO(framecounter, "%lu\n", getFrameCounter()),
-    File_RO(power_accum, "%lu mW-hr\n", static_cast<uint32_t>(power_accum >> 8) / (14062UL)),
-#endif
 };
 
 // cmd files descriptor
