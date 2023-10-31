@@ -91,6 +91,7 @@ with open("Inc/eye_layout.h", "w", encoding="utf-8") as f:
 extern const glm::vec2 channelPoints[];
 extern const uint16_t channelPointOffsets[];
 extern const uint8_t channelLengths[];
+extern const uint8_t channelEyeIndices[];
 static constexpr uint8_t channelMaxLength = {channelMaxLength};
 extern const glm::vec2 boundsMin, boundsMax, boundsCenter;
 
@@ -103,6 +104,7 @@ with open("Src/eye_layout.cpp", "w", encoding="utf-8") as f:
 
   channelOffsets = []
   channelLengths = []
+  channelEyeIndices = []
   currentOffset = 0
 
   rotatedLeftPoints = []
@@ -112,6 +114,7 @@ with open("Src/eye_layout.cpp", "w", encoding="utf-8") as f:
   for channel in left:
     channelOffsets.append(str(currentOffset));
     channelLengths.append(str(len(channel)))
+    channelEyeIndices.append(str(0));
     for point in channel:
       p = rotate_point(point, left_center)
       rotatedLeftPoints.append(p)
@@ -122,6 +125,7 @@ with open("Src/eye_layout.cpp", "w", encoding="utf-8") as f:
   for channel in right:
     channelOffsets.append(str(currentOffset));
     channelLengths.append(str(len(channel)))
+    channelEyeIndices.append(str(1));
     for point in channel:
       p = rotate_point(point, right_center)
       if right_flip:
@@ -156,6 +160,7 @@ with open("Src/eye_layout.cpp", "w", encoding="utf-8") as f:
 
   f.write("const uint16_t channelPointOffsets[] = {" + ",".join(channelOffsets[x] for x in channelSwizzle) + "};\n")
   f.write("const uint8_t channelLengths[] = {" + ",".join(channelLengths[x] for x in channelSwizzle) + "};\n")
+  f.write("const uint8_t channelEyeIndices[] = {" + ",".join(channelEyeIndices[x] for x in channelSwizzle) + "};\n")
 
   f.write(f"const vec2 boundsMin = vec2({leftAdjMin[0]}f, {leftAdjMin[1]}f);\n")
   f.write(f"const vec2 boundsMax = vec2({leftAdjMax[0]}f, {leftAdjMax[1]}f);\n")

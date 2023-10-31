@@ -736,6 +736,7 @@ using glm::vec2;const vec2 channelPoints[] = {
 };
 const uint16_t channelPointOffsets[] = {365,0,461,96,557,192,653,288};
 const uint8_t channelLengths[] = {96,96,96,96,96,96,77,77};
+const uint8_t channelEyeIndices[] = {1,0,1,0,1,0,1,0};
 const vec2 boundsMin = vec2(89.16759052704371f, -156.57053864912496f);
 const vec2 boundsMax = vec2(175.58493932804973f, -99.47913922533763f);
 const vec2 boundsCenter = vec2(132.3762649275467f, -128.0248389372313f);
