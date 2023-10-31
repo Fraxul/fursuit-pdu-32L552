@@ -25,7 +25,7 @@ public:
   float ledPitch = 3.0f; // millimeters
 
   // rough display center coordinates. units are millimeters
-  vec2 pupilCenter = boundsCenter;
+  vec2 pupilCenter[2] = {boundsCenter, boundsCenter};
   vec2 pupilMaxDisplacement = vec2(25, 10);
 
   float pupilMinSpeed = 100.0f; // mm/sec, for constant speed movement. sets a lower bound
@@ -40,10 +40,10 @@ public:
   float blinkDwell = 0.05f; // seconds, dwell time at full blink
 
   // computed state
-  vec2 targetPupilCenter = boundsCenter;
-  float currentMovementSpeed = 0;
-  vec2 movementDirection;
-  float distanceToGo = 0;
+  vec2 targetPupilCenter[2] = {boundsCenter, boundsCenter};
+  float currentMovementSpeed[2] = {0, 0};
+  vec2 movementDirection[2];
+  float distanceToGo[2] = {0, 0};
 
   float nextMovementTimer = movementTimeRangeMin;
   float nextBlinkTimer = blinkTimeRangeMin;

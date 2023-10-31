@@ -154,22 +154,29 @@ uint32_t EyeRenderer::initFrame() {
 
   nextMovementTimer -= timeDelta;
   if (nextMovementTimer < 0) {
-#if 0
-    fixed angle = randomFixed(0, 2_f * fixedpoint::pi());
-    targetPupilCenter = center + fixedVec2(cos(angle), sin(angle)) * (randomVec2() * pupilMaxDisplacement);
-#else
     uint32_t angle_0to1_q15 = randomU32() & 0x7fff;
 
     float sinAngle = q15_to_float(arm_sin_q15(angle_0to1_q15));
     float cosAngle = q15_to_float(arm_cos_q15(angle_0to1_q15));
-    targetPupilCenter = boundsCenter + vec2(cosAngle, sinAngle) * (randomFloat() * pupilMaxDisplacement);
-#endif
 
-    movementDirection = glm::normalize(targetPupilCenter - pupilCenter);
-    distanceToGo = glm::length(targetPupilCenter - pupilCenter);
+    vec2 rawTargetPupilCenter = boundsCenter + vec2(cosAngle, sinAngle) * (randomFloat() * pupilMaxDisplacement);
 
-    currentMovementSpeed = distanceToGo / pupilMaxMovementTime; // compute next movement speed using time constant
-    currentMovementSpeed = glm::max(currentMovementSpeed, pupilMinSpeed); // apply minimum speed for shorter movements
+    for (uint8_t eyeIdx = 0; eyeIdx < 2; ++eyeIdx) {
+      targetPupilCenter[eyeIdx] = rawTargetPupilCenter;
+
+      // Adjust to dampen "looking backwards" per-eye
+      float deltaX = targetPupilCenter[eyeIdx].x - boundsCenter.x;
+      if ((eyeIdx == 0 && deltaX > 0) ||
+          (eyeIdx == 1 && deltaX < 0)) {
+        targetPupilCenter[eyeIdx].x -= (deltaX * 0.5f);
+      }
+
+      movementDirection[eyeIdx] = glm::normalize(targetPupilCenter[eyeIdx] - pupilCenter[eyeIdx]);
+      distanceToGo[eyeIdx] = glm::length(targetPupilCenter[eyeIdx] - pupilCenter[eyeIdx]);
+
+      currentMovementSpeed[eyeIdx] = distanceToGo[eyeIdx] / pupilMaxMovementTime; // compute next movement speed using time constant
+      currentMovementSpeed[eyeIdx] = glm::max(currentMovementSpeed[eyeIdx], pupilMinSpeed); // apply minimum speed for shorter movements
+    }
     nextMovementTimer = randomFloat(movementTimeRangeMin, movementTimeRangeMax);
     //printf("angle=%fdeg targetPupilCenter=(%f, %f) timer=%f\n", glm::degrees(angle), targetPupilCenter[0], targetPupilCenter[1], nextMovementTimer);
 
@@ -193,11 +200,13 @@ uint32_t EyeRenderer::initFrame() {
     frameDelayTime = 0;
   }
 
-  if(distanceToGo > 0.1f) {
-    float movementDistance = glm::min(distanceToGo, (currentMovementSpeed * timeDelta));
-    pupilCenter += movementDirection * movementDistance;
-    distanceToGo -= movementDistance;
-    frameDelayTime = 0;
+  for (uint8_t eyeIdx = 0; eyeIdx < 2; ++eyeIdx) {
+    if(distanceToGo[eyeIdx] > 0.1f) {
+      float movementDistance = glm::min(distanceToGo[eyeIdx], (currentMovementSpeed[eyeIdx] * timeDelta));
+      pupilCenter[eyeIdx] += movementDirection[eyeIdx] * movementDistance;
+      distanceToGo[eyeIdx] -= movementDistance;
+      frameDelayTime = 0;
+    }
   }
 
   return frameDelayTime;
@@ -208,9 +217,10 @@ uint32_t EyeRenderer::initFrame() {
 glm::u8vec3 EyeRenderer::shadePixel(uint8_t channel, uint16_t pixelIdx)  {
   // Look up position for this channel/pixel from the panel manufacturing data
   vec2 p = channelPoints[channelPointOffsets[channel] + pixelIdx];
+  uint8_t eyeIdx = channelEyeIndices[channel];
 
   // Distance from center in XY-plane
-  vec2 d = pupilCenter - p;
+  vec2 d = pupilCenter[eyeIdx] - p;
   float dist2 = glm::dot(d, d);
   float centerMix = glm::smoothstep((16.0f * 16.0f), (30.0f * 30.0f), dist2);
 
