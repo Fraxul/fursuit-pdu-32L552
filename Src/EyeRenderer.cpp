@@ -222,7 +222,7 @@ glm::u8vec3 EyeRenderer::shadePixel(uint8_t channel, uint16_t pixelIdx)  {
   // Distance from center in XY-plane
   vec2 d = pupilCenter[eyeIdx] - p;
   float dist2 = glm::dot(d, d);
-  float centerMix = glm::smoothstep((16.0f * 16.0f), (30.0f * 30.0f), dist2);
+  float centerMix = glm::smoothstep((18.0f * 18.0f), (32.0f * 32.0f), dist2);
 
   vec3 hsv = bgColorHSV;
   if (centerMix < 1.0f) {

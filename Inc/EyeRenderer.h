@@ -19,7 +19,7 @@ public:
   vec3 bgColorHSV = vec3(0.055f, 1.0f, 0.095f);
   vec3 irisColorHSV = vec3(0.055f, 0.675f, 0.25f);
   vec3 pupilColorHSV = vec3(0.055f, 0.675f, 0.005f);
-  vec2 pupilSize = vec2(5.0f, 20.0f); // Ellipse
+  vec2 pupilSize = vec2(7.0f, 22.0f); // Ellipse
   float pupilBlend = 0.5f;
 
   float ledPitch = 3.0f; // millimeters
