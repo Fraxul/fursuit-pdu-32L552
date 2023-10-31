@@ -61,7 +61,8 @@ right, right_layer = read_csv("Shadowfox-Eye-Right-pos.csv")
 # (there two possible mirroring strategies: moving all components to the opposite layer
 # does not require coordinate system fixup, while flipping components on the same layer will
 # require coordinate system fixup.
-right_flip = (right_layer == left_layer)
+# right_flip = (right_layer == left_layer)
+right_flip = True
 
 left_min, left_max = bounds(left)
 right_min, right_max = bounds(right)
