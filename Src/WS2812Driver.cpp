@@ -285,7 +285,7 @@ extern "C" __attribute__((optimize("-Os"))) void Task_WS2812() {
 			uint32_t discharge_start = xTaskGetTickCount();
 			while (true) {
 				uint32_t mv = ADC_read_Disp5V_Sense();
-				if (mv < 250)
+				if (mv < 900)
 					break; // power is off.
 				vTaskDelay(pdMS_TO_TICKS(4));
 			}
